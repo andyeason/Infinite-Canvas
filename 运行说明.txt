@@ -4,9 +4,10 @@ https://kgc.grsai.ai/zh/dashboard/models （这个可以用，API请求地址：
 
 
 2. 新建API key
-https://ai.comfly.chat/token
+https://ai.comfly.chat/token（暂停新注册了）
 
-3. 代码更新，所有API设置都在网页中进行，操作更便捷
+3. 所有API设置都在网页中进行，操作更便捷。并且可以拉取所有模型勾选模型可以应用，保存之后就可以使用。视频生成节点成功运行了。LLM支持提示词反推（可以使用modelscope的模型测试，搜索带VL的模型就可以识别图片）
+
 
 ----运行说明-----
 
@@ -15,4 +16,6 @@ https://ai.comfly.chat/token
 
 ---报错问题---
 
-出现任何报错，可以安装Codex Installer.exe，选中这个文件夹，让codex给你解决运行问题，免费账号每周都有免费额度可以使用
+出现任何报错，可以安装Codex Installer.exe，选中这个文件夹，让codex给你解决运行问题，免费账号每周都有免费额度可以使用。
+
+如果无法安装成功codex，就安装trae，同样的修复就可以了。
