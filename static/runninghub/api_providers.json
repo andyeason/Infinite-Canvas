@@ -1,0 +1,2251 @@
+[
+  {
+    "id": "runninghub",
+    "name": "RunningHub",
+    "base_url": "https://www.runninghub.cn",
+    "protocol": "runninghub",
+    "image_generation_endpoint": "",
+    "image_edit_endpoint": "",
+    "enabled": true,
+    "primary": false,
+    "image_models": [
+      "seedream-v5-lite/text-to-image",
+      "seedream-v5-lite/image-to-image"
+    ],
+    "chat_models": [],
+    "video_models": [],
+    "ms_loras": [],
+    "ms_defaults_version": 0,
+    "rh_apps": [
+      {
+        "id": "2058517022748798977",
+        "title": "2511-风格迁移",
+        "note": "",
+        "thumbnail": "",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "100::image",
+            "nodeId": "100",
+            "fieldName": "image",
+            "fieldValue": "pasted/57ef7dc980b6446bca366caaf3f94eb12b22b23f78aa30e294b39cabd7d0187b.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "AI 应用参数",
+            "note": "image",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "112::image",
+            "nodeId": "112",
+            "fieldName": "image",
+            "fieldValue": "8cff63ee4b3e0285ca85ab90a52e26746df84ed0dec0be9d76c679cbb62a247d.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "AI 应用参数",
+            "note": "image",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "14::seed",
+            "nodeId": "14",
+            "fieldName": "seed",
+            "fieldValue": "554049736557817",
+            "fieldType": "INT",
+            "label": "seed",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "AI 应用参数",
+            "note": "seed",
+            "options": [],
+            "random_enabled": true,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          }
+        ],
+        "appId": "2058517022748798977"
+      },
+      {
+        "id": "1997622492837646338",
+        "title": "2511-光线迁移",
+        "note": "",
+        "thumbnail": "",
+        "enabled": true,
+        "appId": "1997622492837646338"
+      }
+    ],
+    "rh_workflows": [
+      {
+        "id": "2058824859437850625",
+        "title": "SeedVR2 高清放大",
+        "note": "",
+        "thumbnail": "",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "165::filename_prefix",
+            "nodeId": "165",
+            "fieldName": "filename_prefix",
+            "fieldValue": "ComfyUI",
+            "fieldType": "TEXT",
+            "label": "filename_prefix",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "保存图像",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "187::image",
+            "nodeId": "187",
+            "fieldName": "image",
+            "fieldValue": "pasted/75f38df8f7fd6f254c3b8d2fd1c43519a311e8eaa325dc8859dedfee26cb663a.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "加载图像",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 1,
+            "required": true
+          },
+          {
+            "id": "160::attention_mode",
+            "nodeId": "160",
+            "fieldName": "attention_mode",
+            "fieldValue": "sdpa",
+            "fieldType": "TEXT",
+            "label": "attention_mode",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load DiT Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "160::swap_io_components",
+            "nodeId": "160",
+            "fieldName": "swap_io_components",
+            "fieldValue": "True",
+            "fieldType": "BOOLEAN",
+            "label": "swap_io_components",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load DiT Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "160::offload_device",
+            "nodeId": "160",
+            "fieldName": "offload_device",
+            "fieldValue": "cpu",
+            "fieldType": "TEXT",
+            "label": "offload_device",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load DiT Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "160::model",
+            "nodeId": "160",
+            "fieldName": "model",
+            "fieldValue": "seedvr2_ema_3b_fp16.safetensors",
+            "fieldType": "TEXT",
+            "label": "model",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load DiT Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "160::device",
+            "nodeId": "160",
+            "fieldName": "device",
+            "fieldValue": "cuda:0",
+            "fieldType": "TEXT",
+            "label": "device",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load DiT Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "160::blocks_to_swap",
+            "nodeId": "160",
+            "fieldName": "blocks_to_swap",
+            "fieldValue": "32",
+            "fieldType": "NUMBER",
+            "label": "blocks_to_swap",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load DiT Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::encode_tiled",
+            "nodeId": "161",
+            "fieldName": "encode_tiled",
+            "fieldValue": "True",
+            "fieldType": "BOOLEAN",
+            "label": "encode_tiled",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::encode_tile_overlap",
+            "nodeId": "161",
+            "fieldName": "encode_tile_overlap",
+            "fieldValue": "128",
+            "fieldType": "NUMBER",
+            "label": "encode_tile_overlap",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::encode_tile_size",
+            "nodeId": "161",
+            "fieldName": "encode_tile_size",
+            "fieldValue": "1024",
+            "fieldType": "NUMBER",
+            "label": "encode_tile_size",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::decode_tiled",
+            "nodeId": "161",
+            "fieldName": "decode_tiled",
+            "fieldValue": "True",
+            "fieldType": "BOOLEAN",
+            "label": "decode_tiled",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::decode_tile_size",
+            "nodeId": "161",
+            "fieldName": "decode_tile_size",
+            "fieldValue": "1024",
+            "fieldType": "NUMBER",
+            "label": "decode_tile_size",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::tile_debug",
+            "nodeId": "161",
+            "fieldName": "tile_debug",
+            "fieldValue": "false",
+            "fieldType": "BOOLEAN",
+            "label": "tile_debug",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::offload_device",
+            "nodeId": "161",
+            "fieldName": "offload_device",
+            "fieldValue": "cpu",
+            "fieldType": "TEXT",
+            "label": "offload_device",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::model",
+            "nodeId": "161",
+            "fieldName": "model",
+            "fieldValue": "ema_vae_fp16.safetensors",
+            "fieldType": "TEXT",
+            "label": "model",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::decode_tile_overlap",
+            "nodeId": "161",
+            "fieldName": "decode_tile_overlap",
+            "fieldValue": "128",
+            "fieldType": "NUMBER",
+            "label": "decode_tile_overlap",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "161::device",
+            "nodeId": "161",
+            "fieldName": "device",
+            "fieldValue": "cuda:0",
+            "fieldType": "TEXT",
+            "label": "device",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 (Down)Load VAE Model",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "162::scale_by",
+            "nodeId": "162",
+            "fieldName": "scale_by",
+            "fieldValue": "0.5000000000000001",
+            "fieldType": "NUMBER",
+            "label": "scale_by",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "图像按系数缩放",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "162::upscale_method",
+            "nodeId": "162",
+            "fieldName": "upscale_method",
+            "fieldValue": "lanczos",
+            "fieldType": "TEXT",
+            "label": "upscale_method",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "图像按系数缩放",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::batch_size",
+            "nodeId": "163",
+            "fieldName": "batch_size",
+            "fieldValue": "5",
+            "fieldType": "NUMBER",
+            "label": "batch_size",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::seed",
+            "nodeId": "163",
+            "fieldName": "seed",
+            "fieldValue": "2541465446",
+            "fieldType": "NUMBER",
+            "label": "seed",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": true,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::uniform_batch_size",
+            "nodeId": "163",
+            "fieldName": "uniform_batch_size",
+            "fieldValue": "False",
+            "fieldType": "BOOLEAN",
+            "label": "uniform_batch_size",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::latent_noise_scale",
+            "nodeId": "163",
+            "fieldName": "latent_noise_scale",
+            "fieldValue": "0",
+            "fieldType": "NUMBER",
+            "label": "latent_noise_scale",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::temporal_overlap",
+            "nodeId": "163",
+            "fieldName": "temporal_overlap",
+            "fieldValue": "0",
+            "fieldType": "NUMBER",
+            "label": "temporal_overlap",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::resolution",
+            "nodeId": "163",
+            "fieldName": "resolution",
+            "fieldValue": "2048",
+            "fieldType": "SELECT",
+            "label": "resolution",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [
+              "2048",
+              "4096"
+            ],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::color_correction",
+            "nodeId": "163",
+            "fieldName": "color_correction",
+            "fieldValue": "lab",
+            "fieldType": "TEXT",
+            "label": "color_correction",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::enable_debug",
+            "nodeId": "163",
+            "fieldName": "enable_debug",
+            "fieldValue": "False",
+            "fieldType": "BOOLEAN",
+            "label": "enable_debug",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::prepend_frames",
+            "nodeId": "163",
+            "fieldName": "prepend_frames",
+            "fieldValue": "0",
+            "fieldType": "NUMBER",
+            "label": "prepend_frames",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::offload_device",
+            "nodeId": "163",
+            "fieldName": "offload_device",
+            "fieldValue": "cpu",
+            "fieldType": "TEXT",
+            "label": "offload_device",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::input_noise_scale",
+            "nodeId": "163",
+            "fieldName": "input_noise_scale",
+            "fieldValue": "0",
+            "fieldType": "NUMBER",
+            "label": "input_noise_scale",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "163::max_resolution",
+            "nodeId": "163",
+            "fieldName": "max_resolution",
+            "fieldValue": "4096",
+            "fieldType": "NUMBER",
+            "label": "max_resolution",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "SeedVR2 Video Upscaler (v2.5.15)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          }
+        ],
+        "optionalImageMode": "prune-workflow",
+        "workflowJson": {
+          "160": {
+            "class_type": "SeedVR2LoadDiTModel",
+            "inputs": {
+              "attention_mode": "sdpa",
+              "swap_io_components": true,
+              "offload_device": "cpu",
+              "model": "seedvr2_ema_3b_fp16.safetensors",
+              "device": "cuda:0",
+              "blocks_to_swap": 32
+            },
+            "_meta": {
+              "title": "SeedVR2 (Down)Load DiT Model"
+            }
+          },
+          "161": {
+            "class_type": "SeedVR2LoadVAEModel",
+            "inputs": {
+              "encode_tiled": true,
+              "encode_tile_overlap": 128,
+              "encode_tile_size": 1024,
+              "decode_tiled": true,
+              "decode_tile_size": 1024,
+              "tile_debug": "false",
+              "offload_device": "cpu",
+              "model": "ema_vae_fp16.safetensors",
+              "decode_tile_overlap": 128,
+              "device": "cuda:0"
+            },
+            "_meta": {
+              "title": "SeedVR2 (Down)Load VAE Model"
+            }
+          },
+          "162": {
+            "class_type": "ImageScaleBy",
+            "inputs": {
+              "image": [
+                "187",
+                0
+              ],
+              "scale_by": 0.5000000000000001,
+              "upscale_method": "lanczos"
+            },
+            "_meta": {
+              "title": "图像按系数缩放"
+            }
+          },
+          "163": {
+            "class_type": "SeedVR2VideoUpscaler",
+            "inputs": {
+              "image": [
+                "162",
+                0
+              ],
+              "batch_size": 5,
+              "seed": 2541465446,
+              "uniform_batch_size": false,
+              "latent_noise_scale": 0,
+              "temporal_overlap": 0,
+              "resolution": 2048,
+              "dit": [
+                "160",
+                0
+              ],
+              "color_correction": "lab",
+              "enable_debug": false,
+              "prepend_frames": 0,
+              "offload_device": "cpu",
+              "input_noise_scale": 0,
+              "vae": [
+                "161",
+                0
+              ],
+              "max_resolution": 4096
+            },
+            "_meta": {
+              "title": "SeedVR2 Video Upscaler (v2.5.15)"
+            }
+          },
+          "165": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "filename_prefix": "ComfyUI",
+              "images": [
+                "163",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "保存图像"
+            }
+          },
+          "187": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/75f38df8f7fd6f254c3b8d2fd1c43519a311e8eaa325dc8859dedfee26cb663a.png"
+            },
+            "_meta": {
+              "title": "加载图像"
+            }
+          },
+          "190": {
+            "class_type": "PreviewImage",
+            "inputs": {
+              "images": [
+                "163",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "预览图像"
+            }
+          }
+        },
+        "raw": {
+          "code": 0,
+          "msg": "success",
+          "errorMessages": null,
+          "data": {
+            "prompt": "{\"165\":{\"class_type\":\"SaveImage\",\"inputs\":{\"filename_prefix\":\"ComfyUI\",\"images\":[\"163\",0]},\"_meta\":{\"title\":\"保存图像\"}},\"187\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/75f38df8f7fd6f254c3b8d2fd1c43519a311e8eaa325dc8859dedfee26cb663a.png\"},\"_meta\":{\"title\":\"加载图像\"}},\"190\":{\"class_type\":\"PreviewImage\",\"inputs\":{\"images\":[\"163\",0]},\"_meta\":{\"title\":\"预览图像\"}},\"160\":{\"class_type\":\"SeedVR2LoadDiTModel\",\"inputs\":{\"attention_mode\":\"sdpa\",\"swap_io_components\":true,\"offload_device\":\"cpu\",\"model\":\"seedvr2_ema_3b_fp16.safetensors\",\"device\":\"cuda:0\",\"blocks_to_swap\":32},\"_meta\":{\"title\":\"SeedVR2 (Down)Load DiT Model\"}},\"161\":{\"class_type\":\"SeedVR2LoadVAEModel\",\"inputs\":{\"encode_tiled\":true,\"encode_tile_overlap\":128,\"encode_tile_size\":1024,\"decode_tiled\":true,\"decode_tile_size\":1024,\"tile_debug\":\"false\",\"offload_device\":\"cpu\",\"model\":\"ema_vae_fp16.safetensors\",\"decode_tile_overlap\":128,\"device\":\"cuda:0\"},\"_meta\":{\"title\":\"SeedVR2 (Down)Load VAE Model\"}},\"162\":{\"class_type\":\"ImageScaleBy\",\"inputs\":{\"image\":[\"187\",0],\"scale_by\":0.5000000000000001,\"upscale_method\":\"lanczos\"},\"_meta\":{\"title\":\"图像按系数缩放\"}},\"163\":{\"class_type\":\"SeedVR2VideoUpscaler\",\"inputs\":{\"image\":[\"162\",0],\"batch_size\":5,\"seed\":2541465446,\"uniform_batch_size\":false,\"latent_noise_scale\":0,\"temporal_overlap\":0,\"resolution\":2048,\"dit\":[\"160\",0],\"color_correction\":\"lab\",\"enable_debug\":false,\"prepend_frames\":0,\"offload_device\":\"cpu\",\"input_noise_scale\":0,\"vae\":[\"161\",0],\"max_resolution\":4096},\"_meta\":{\"title\":\"SeedVR2 Video Upscaler (v2.5.15)\"}}}"
+          }
+        },
+        "updatedAt": 1779700211500,
+        "workflowId": "2058824859437850625"
+      },
+      {
+        "id": "2058818588181622785",
+        "title": "Flux.2 Klein 细节增强",
+        "note": "",
+        "thumbnail": "",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "351::vae_name",
+            "nodeId": "351",
+            "fieldName": "vae_name",
+            "fieldValue": "flux2-vae.safetensors",
+            "fieldType": "TEXT",
+            "label": "vae_name",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "VAE加载器",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "352::text",
+            "nodeId": "352",
+            "fieldName": "text",
+            "fieldValue": "realistic，将画面变为真实的照片",
+            "fieldType": "TEXT",
+            "label": "text",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "文本",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "343::lora_name",
+            "nodeId": "343",
+            "fieldName": "lora_name",
+            "fieldValue": "detail-new_000014500.safetensors",
+            "fieldType": "TEXT",
+            "label": "lora_name",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "LoRA加载器(仅模型)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "343::strength_model",
+            "nodeId": "343",
+            "fieldName": "strength_model",
+            "fieldValue": "1",
+            "fieldType": "NUMBER",
+            "label": "strength_model",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "LoRA加载器(仅模型)",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "278::image",
+            "nodeId": "278",
+            "fieldName": "image",
+            "fieldValue": "b63d0162b66d893452f50e6fb62b07a8bbfab9d5f65773f25bfce914e4bd012f.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "加载图像",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 1,
+            "required": true
+          },
+          {
+            "id": "344::steps",
+            "nodeId": "344",
+            "fieldName": "steps",
+            "fieldValue": "8",
+            "fieldType": "NUMBER",
+            "label": "steps",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "Flux2Scheduler",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "158::noise_seed",
+            "nodeId": "158",
+            "fieldName": "noise_seed",
+            "fieldValue": "58977320647575",
+            "fieldType": "NUMBER",
+            "label": "noise_seed",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "随机噪波",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "356::weight_dtype",
+            "nodeId": "356",
+            "fieldName": "weight_dtype",
+            "fieldValue": "default",
+            "fieldType": "TEXT",
+            "label": "weight_dtype",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "UNET加载器",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "356::unet_name",
+            "nodeId": "356",
+            "fieldName": "unet_name",
+            "fieldValue": "flux-2-klein-9b-fp8.safetensors",
+            "fieldType": "TEXT",
+            "label": "unet_name",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "UNET加载器",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "346::megapixels",
+            "nodeId": "346",
+            "fieldName": "megapixels",
+            "fieldValue": "4.000000000000001",
+            "fieldType": "SELECT",
+            "label": "megapixels",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "图像按像素缩放",
+            "note": "",
+            "options": [
+              "1"
+            ],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "346::resolution_steps",
+            "nodeId": "346",
+            "fieldName": "resolution_steps",
+            "fieldValue": "1",
+            "fieldType": "NUMBER",
+            "label": "resolution_steps",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "图像按像素缩放",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "346::upscale_method",
+            "nodeId": "346",
+            "fieldName": "upscale_method",
+            "fieldValue": "lanczos",
+            "fieldType": "TEXT",
+            "label": "upscale_method",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "图像按像素缩放",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "357::clip_name",
+            "nodeId": "357",
+            "fieldName": "clip_name",
+            "fieldValue": "qwen_3_8b_fp8mixed.safetensors",
+            "fieldType": "TEXT",
+            "label": "clip_name",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "CLIP加载器",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "357::type",
+            "nodeId": "357",
+            "fieldName": "type",
+            "fieldValue": "flux2",
+            "fieldType": "TEXT",
+            "label": "type",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "CLIP加载器",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "357::device",
+            "nodeId": "357",
+            "fieldName": "device",
+            "fieldValue": "default",
+            "fieldType": "TEXT",
+            "label": "device",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "CLIP加载器",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "347::batch_size",
+            "nodeId": "347",
+            "fieldName": "batch_size",
+            "fieldValue": "1",
+            "fieldType": "NUMBER",
+            "label": "batch_size",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "Empty Flux 2 Latent",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "359::filename_prefix",
+            "nodeId": "359",
+            "fieldName": "filename_prefix",
+            "fieldValue": "ComfyUI",
+            "fieldType": "TEXT",
+            "label": "filename_prefix",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "保存图像",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "338::cfg",
+            "nodeId": "338",
+            "fieldName": "cfg",
+            "fieldValue": "1",
+            "fieldType": "NUMBER",
+            "label": "cfg",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "CFG引导",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "339::sampler_name",
+            "nodeId": "339",
+            "fieldName": "sampler_name",
+            "fieldValue": "euler",
+            "fieldType": "SELECT",
+            "label": "sampler_name",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "K采样器选择",
+            "note": "",
+            "options": [
+              "euler",
+              "euler_ancestral",
+              "heun",
+              "dpm_2",
+              "dpm_2_ancestral",
+              "lms",
+              "dpmpp_2m",
+              "dpmpp_sde",
+              "ddim",
+              "uni_pc"
+            ],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          }
+        ],
+        "optionalImageMode": "prune-workflow",
+        "workflowJson": {
+          "158": {
+            "class_type": "RandomNoise",
+            "inputs": {
+              "noise_seed": 58977320647575
+            },
+            "_meta": {
+              "title": "随机噪波"
+            }
+          },
+          "278": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "b63d0162b66d893452f50e6fb62b07a8bbfab9d5f65773f25bfce914e4bd012f.png"
+            },
+            "_meta": {
+              "title": "加载图像"
+            }
+          },
+          "332": {
+            "class_type": "ReferenceLatent",
+            "inputs": {
+              "latent": [
+                "337",
+                0
+              ],
+              "conditioning": [
+                "345",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "ReferenceLatent"
+            }
+          },
+          "333": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": [
+                "345",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "条件零化"
+            }
+          },
+          "334": {
+            "class_type": "ReferenceLatent",
+            "inputs": {
+              "latent": [
+                "337",
+                0
+              ],
+              "conditioning": [
+                "333",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "ReferenceLatent"
+            }
+          },
+          "336": {
+            "class_type": "SamplerCustomAdvanced",
+            "inputs": {
+              "guider": [
+                "338",
+                0
+              ],
+              "latent_image": [
+                "347",
+                0
+              ],
+              "noise": [
+                "158",
+                0
+              ],
+              "sigmas": [
+                "344",
+                0
+              ],
+              "sampler": [
+                "339",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "自定义采样器(高级)"
+            }
+          },
+          "337": {
+            "class_type": "VAEEncode",
+            "inputs": {
+              "pixels": [
+                "346",
+                0
+              ],
+              "vae": [
+                "351",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "VAE编码"
+            }
+          },
+          "338": {
+            "class_type": "CFGGuider",
+            "inputs": {
+              "negative": [
+                "334",
+                0
+              ],
+              "cfg": 1,
+              "model": [
+                "343",
+                0
+              ],
+              "positive": [
+                "332",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "CFG引导"
+            }
+          },
+          "339": {
+            "class_type": "KSamplerSelect",
+            "inputs": {
+              "sampler_name": "euler"
+            },
+            "_meta": {
+              "title": "K采样器选择"
+            }
+          },
+          "340": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "vae": [
+                "351",
+                0
+              ],
+              "samples": [
+                "336",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "VAE解码"
+            }
+          },
+          "342": {
+            "class_type": "PreviewImage",
+            "inputs": {
+              "images": [
+                "340",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "预览图像"
+            }
+          },
+          "343": {
+            "class_type": "LoraLoaderModelOnly",
+            "inputs": {
+              "lora_name": "detail-new_000014500.safetensors",
+              "strength_model": 1,
+              "model": [
+                "356",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "LoRA加载器(仅模型)"
+            }
+          },
+          "344": {
+            "class_type": "Flux2Scheduler",
+            "inputs": {
+              "width": [
+                "348",
+                1
+              ],
+              "steps": 8,
+              "height": [
+                "348",
+                1
+              ]
+            },
+            "_meta": {
+              "title": "Flux2Scheduler"
+            }
+          },
+          "345": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": [
+                "352",
+                0
+              ],
+              "clip": [
+                "357",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "CLIP文本编码器"
+            }
+          },
+          "346": {
+            "class_type": "ImageScaleToTotalPixels",
+            "inputs": {
+              "image": [
+                "278",
+                0
+              ],
+              "megapixels": 4.000000000000001,
+              "resolution_steps": 1,
+              "upscale_method": "lanczos"
+            },
+            "_meta": {
+              "title": "图像按像素缩放"
+            }
+          },
+          "347": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "batch_size": 1,
+              "width": [
+                "348",
+                0
+              ],
+              "height": [
+                "348",
+                1
+              ]
+            },
+            "_meta": {
+              "title": "Empty Flux 2 Latent"
+            }
+          },
+          "348": {
+            "class_type": "GetImageSize",
+            "inputs": {
+              "image": [
+                "346",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "获取图像尺寸"
+            }
+          },
+          "351": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae.safetensors"
+            },
+            "_meta": {
+              "title": "VAE加载器"
+            }
+          },
+          "352": {
+            "class_type": "CR Text",
+            "inputs": {
+              "text": "realistic，将画面变为真实的照片"
+            },
+            "_meta": {
+              "title": "文本"
+            }
+          },
+          "356": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "weight_dtype": "default",
+              "unet_name": "flux-2-klein-9b-fp8.safetensors"
+            },
+            "_meta": {
+              "title": "UNET加载器"
+            }
+          },
+          "357": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen_3_8b_fp8mixed.safetensors",
+              "type": "flux2",
+              "device": "default"
+            },
+            "_meta": {
+              "title": "CLIP加载器"
+            }
+          },
+          "359": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "filename_prefix": "ComfyUI",
+              "images": [
+                "340",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "保存图像"
+            }
+          }
+        },
+        "raw": {
+          "code": 0,
+          "msg": "success",
+          "errorMessages": null,
+          "data": {
+            "prompt": "{\"340\":{\"class_type\":\"VAEDecode\",\"inputs\":{\"vae\":[\"351\",0],\"samples\":[\"336\",0]},\"_meta\":{\"title\":\"VAE解码\"}},\"351\":{\"class_type\":\"VAELoader\",\"inputs\":{\"vae_name\":\"flux2-vae.safetensors\"},\"_meta\":{\"title\":\"VAE加载器\"}},\"352\":{\"class_type\":\"CR Text\",\"inputs\":{\"text\":\"realistic，将画面变为真实的照片\"},\"_meta\":{\"title\":\"文本\"}},\"342\":{\"class_type\":\"PreviewImage\",\"inputs\":{\"images\":[\"340\",0]},\"_meta\":{\"title\":\"预览图像\"}},\"332\":{\"class_type\":\"ReferenceLatent\",\"inputs\":{\"latent\":[\"337\",0],\"conditioning\":[\"345\",0]},\"_meta\":{\"title\":\"ReferenceLatent\"}},\"343\":{\"class_type\":\"LoraLoaderModelOnly\",\"inputs\":{\"lora_name\":\"detail-new_000014500.safetensors\",\"strength_model\":1,\"model\":[\"356\",0]},\"_meta\":{\"title\":\"LoRA加载器(仅模型)\"}},\"278\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"b63d0162b66d893452f50e6fb62b07a8bbfab9d5f65773f25bfce914e4bd012f.png\"},\"_meta\":{\"title\":\"加载图像\"}},\"333\":{\"class_type\":\"ConditioningZeroOut\",\"inputs\":{\"conditioning\":[\"345\",0]},\"_meta\":{\"title\":\"条件零化\"}},\"344\":{\"class_type\":\"Flux2Scheduler\",\"inputs\":{\"width\":[\"348\",1],\"steps\":8,\"height\":[\"348\",1]},\"_meta\":{\"title\":\"Flux2Scheduler\"}},\"158\":{\"class_type\":\"RandomNoise\",\"inputs\":{\"noise_seed\":58977320647575},\"_meta\":{\"title\":\"随机噪波\"}},\"334\":{\"class_type\":\"ReferenceLatent\",\"inputs\":{\"latent\":[\"337\",0],\"conditioning\":[\"333\",0]},\"_meta\":{\"title\":\"ReferenceLatent\"}},\"345\":{\"class_type\":\"CLIPTextEncode\",\"inputs\":{\"text\":[\"352\",0],\"clip\":[\"357\",0]},\"_meta\":{\"title\":\"CLIP文本编码器\"}},\"356\":{\"class_type\":\"UNETLoader\",\"inputs\":{\"weight_dtype\":\"default\",\"unet_name\":\"flux-2-klein-9b-fp8.safetensors\"},\"_meta\":{\"title\":\"UNET加载器\"}},\"346\":{\"class_type\":\"ImageScaleToTotalPixels\",\"inputs\":{\"image\":[\"278\",0],\"megapixels\":4.000000000000001,\"resolution_steps\":1,\"upscale_method\":\"lanczos\"},\"_meta\":{\"title\":\"图像按像素缩放\"}},\"357\":{\"class_type\":\"CLIPLoader\",\"inputs\":{\"clip_name\":\"qwen_3_8b_fp8mixed.safetensors\",\"type\":\"flux2\",\"device\":\"default\"},\"_meta\":{\"title\":\"CLIP加载器\"}},\"336\":{\"class_type\":\"SamplerCustomAdvanced\",\"inputs\":{\"guider\":[\"338\",0],\"latent_image\":[\"347\",0],\"noise\":[\"158\",0],\"sigmas\":[\"344\",0],\"sampler\":[\"339\",0]},\"_meta\":{\"title\":\"自定义采样器(高级)\"}},\"347\":{\"class_type\":\"EmptyFlux2LatentImage\",\"inputs\":{\"batch_size\":1,\"width\":[\"348\",0],\"height\":[\"348\",1]},\"_meta\":{\"title\":\"Empty Flux 2 Latent\"}},\"337\":{\"class_type\":\"VAEEncode\",\"inputs\":{\"pixels\":[\"346\",0],\"vae\":[\"351\",0]},\"_meta\":{\"title\":\"VAE编码\"}},\"348\":{\"class_type\":\"GetImageSize\",\"inputs\":{\"image\":[\"346\",0]},\"_meta\":{\"title\":\"获取图像尺寸\"}},\"359\":{\"class_type\":\"SaveImage\",\"inputs\":{\"filename_prefix\":\"ComfyUI\",\"images\":[\"340\",0]},\"_meta\":{\"title\":\"保存图像\"}},\"338\":{\"class_type\":\"CFGGuider\",\"inputs\":{\"negative\":[\"334\",0],\"cfg\":1,\"model\":[\"343\",0],\"positive\":[\"332\",0]},\"_meta\":{\"title\":\"CFG引导\"}},\"339\":{\"class_type\":\"KSamplerSelect\",\"inputs\":{\"sampler_name\":\"euler\"},\"_meta\":{\"title\":\"K采样器选择\"}}}"
+          }
+        },
+        "updatedAt": 1779698706467,
+        "workflowId": "2058818588181622785"
+      },
+      {
+        "id": "2058554058318897153",
+        "title": "GPT-Image-2-图片编辑",
+        "note": "",
+        "thumbnail": "",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "1::filename_prefix",
+            "nodeId": "1",
+            "fieldName": "filename_prefix",
+            "fieldValue": "ComfyUI",
+            "fieldType": "TEXT",
+            "label": "filename_prefix",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "Save Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "3::image",
+            "nodeId": "3",
+            "fieldName": "image",
+            "fieldValue": "pasted/13839fc6bad36400c5fdb0e595b56a8518ca1dea00e552455bd23fe2e47f3f49.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 1,
+            "required": true
+          },
+          {
+            "id": "4::seed",
+            "nodeId": "4",
+            "fieldName": "seed",
+            "fieldValue": "1420337323",
+            "fieldType": "NUMBER",
+            "label": "seed",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH GPT Image 2.0 Edit Channel Low Price",
+            "note": "",
+            "options": [],
+            "random_enabled": true,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "4::skip_error",
+            "nodeId": "4",
+            "fieldName": "skip_error",
+            "fieldValue": "False",
+            "fieldType": "BOOLEAN",
+            "label": "skip_error",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "RH GPT Image 2.0 Edit Channel Low Price",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "4::aspectRatio",
+            "nodeId": "4",
+            "fieldName": "aspectRatio",
+            "fieldValue": "9:16",
+            "fieldType": "SELECT",
+            "label": "aspectRatio",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH GPT Image 2.0 Edit Channel Low Price",
+            "note": "",
+            "options": [
+              "1:1",
+              "16:9",
+              "9:16",
+              "4:3",
+              "3:4",
+              "4:5",
+              "5:4",
+              "3:2",
+              "2:3"
+            ],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "4::prompt",
+            "nodeId": "4",
+            "fieldName": "prompt",
+            "fieldValue": "图1的模特戴上图2的眼镜/图3的上衣/图4的裤子/图5的背包",
+            "fieldType": "TEXT",
+            "label": "prompt",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH GPT Image 2.0 Edit Channel Low Price",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "4::resolution",
+            "nodeId": "4",
+            "fieldName": "resolution",
+            "fieldValue": "1k",
+            "fieldType": "SELECT",
+            "label": "resolution",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH GPT Image 2.0 Edit Channel Low Price",
+            "note": "",
+            "options": [
+              "512",
+              "768",
+              "1024",
+              "1280",
+              "1536",
+              "2048",
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "5::image",
+            "nodeId": "5",
+            "fieldName": "image",
+            "fieldValue": "pasted/1aa2f479aade662c1820b780dbc397860ef133c1345ccce75bc4d2f089e71eb2.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 2,
+            "required": false
+          },
+          {
+            "id": "6::image",
+            "nodeId": "6",
+            "fieldName": "image",
+            "fieldValue": "pasted/9f196a9affbce26eff7dcb65abb067a498e392e8d6f210b73521d126c09505fd.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 3,
+            "required": false
+          },
+          {
+            "id": "7::image",
+            "nodeId": "7",
+            "fieldName": "image",
+            "fieldValue": "pasted/46948afdef9592cbf0ec98f2976eb8743c516a4eb4539474c4307044ae56fa88.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 4,
+            "required": false
+          },
+          {
+            "id": "8::image",
+            "nodeId": "8",
+            "fieldName": "image",
+            "fieldValue": "pasted/be53aea7278c58fa7f48ab8eae1d772099e4900ceda7e88157ab97cf3f5e64aa.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 5,
+            "required": false
+          }
+        ],
+        "optionalImageMode": "prune-workflow",
+        "workflowJson": {
+          "1": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "filename_prefix": "ComfyUI",
+              "images": [
+                "4",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "Save Image"
+            }
+          },
+          "3": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/13839fc6bad36400c5fdb0e595b56a8518ca1dea00e552455bd23fe2e47f3f49.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "4": {
+            "class_type": "RH_RhartImageG2ImageToImage",
+            "inputs": {
+              "image5": [
+                "8",
+                0
+              ],
+              "image3": [
+                "6",
+                0
+              ],
+              "image4": [
+                "7",
+                0
+              ],
+              "seed": 1420337323,
+              "skip_error": false,
+              "aspectRatio": "9:16",
+              "image1": [
+                "3",
+                0
+              ],
+              "prompt": "图1的模特戴上图2的眼镜/图3的上衣/图4的裤子/图5的背包",
+              "resolution": "1k",
+              "image2": [
+                "5",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "RH GPT Image 2.0 Edit Channel Low Price"
+            }
+          },
+          "5": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/1aa2f479aade662c1820b780dbc397860ef133c1345ccce75bc4d2f089e71eb2.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "6": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/9f196a9affbce26eff7dcb65abb067a498e392e8d6f210b73521d126c09505fd.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "7": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/46948afdef9592cbf0ec98f2976eb8743c516a4eb4539474c4307044ae56fa88.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "8": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/be53aea7278c58fa7f48ab8eae1d772099e4900ceda7e88157ab97cf3f5e64aa.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          }
+        },
+        "raw": {
+          "code": 0,
+          "msg": "success",
+          "errorMessages": null,
+          "data": {
+            "prompt": "{\"1\":{\"class_type\":\"SaveImage\",\"inputs\":{\"filename_prefix\":\"ComfyUI\",\"images\":[\"4\",0]},\"_meta\":{\"title\":\"Save Image\"}},\"3\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/13839fc6bad36400c5fdb0e595b56a8518ca1dea00e552455bd23fe2e47f3f49.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"4\":{\"class_type\":\"RH_RhartImageG2ImageToImage\",\"inputs\":{\"image5\":[\"8\",0],\"image3\":[\"6\",0],\"image4\":[\"7\",0],\"seed\":1420337323,\"skip_error\":false,\"aspectRatio\":\"9:16\",\"image1\":[\"3\",0],\"prompt\":\"图1的模特戴上图2的眼镜/图3的上衣/图4的裤子/图5的背包\",\"resolution\":\"1k\",\"image2\":[\"5\",0]},\"_meta\":{\"title\":\"RH GPT Image 2.0 Edit Channel Low Price\"}},\"5\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/1aa2f479aade662c1820b780dbc397860ef133c1345ccce75bc4d2f089e71eb2.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"6\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/9f196a9affbce26eff7dcb65abb067a498e392e8d6f210b73521d126c09505fd.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"7\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/46948afdef9592cbf0ec98f2976eb8743c516a4eb4539474c4307044ae56fa88.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"8\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/be53aea7278c58fa7f48ab8eae1d772099e4900ceda7e88157ab97cf3f5e64aa.png\"},\"_meta\":{\"title\":\"Load Image\"}}}"
+          }
+        },
+        "updatedAt": 1779699867259,
+        "workflowId": "2058554058318897153"
+      },
+      {
+        "id": "2058541134623891458",
+        "title": "GPT-Image-2-图片编辑",
+        "note": "",
+        "thumbnail": "",
+        "enabled": true,
+        "fields": [
+          {
+            "id": "1::seed",
+            "nodeId": "1",
+            "fieldName": "seed",
+            "fieldValue": "1074325503",
+            "fieldType": "NUMBER",
+            "label": "seed",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH NanoBanana2 gemini-3.1-flash-image-preview 🆕",
+            "note": "",
+            "options": [],
+            "random_enabled": true,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "1::skip_error",
+            "nodeId": "1",
+            "fieldName": "skip_error",
+            "fieldValue": "False",
+            "fieldType": "BOOLEAN",
+            "label": "skip_error",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "RH NanoBanana2 gemini-3.1-flash-image-preview 🆕",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "1::channel",
+            "nodeId": "1",
+            "fieldName": "channel",
+            "fieldValue": "Third-party",
+            "fieldType": "SELECT",
+            "label": "channel",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "RH NanoBanana2 gemini-3.1-flash-image-preview 🆕",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "1::aspectRatio",
+            "nodeId": "1",
+            "fieldName": "aspectRatio",
+            "fieldValue": "9:16",
+            "fieldType": "SELECT",
+            "label": "aspectRatio",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH NanoBanana2 gemini-3.1-flash-image-preview 🆕",
+            "note": "",
+            "options": [
+              "1:1",
+              "16:9",
+              "9:16",
+              "4:3",
+              "3:4",
+              "4:5",
+              "5:4",
+              "3:2",
+              "2:3"
+            ],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "1::prompt",
+            "nodeId": "1",
+            "fieldName": "prompt",
+            "fieldValue": "图1的模特戴上图2的眼镜/图3的上衣/图4的裤子/图5的背包",
+            "fieldType": "TEXT",
+            "label": "prompt",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH NanoBanana2 gemini-3.1-flash-image-preview 🆕",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "1::resolution",
+            "nodeId": "1",
+            "fieldName": "resolution",
+            "fieldValue": "1k",
+            "fieldType": "SELECT",
+            "label": "resolution",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "RH NanoBanana2 gemini-3.1-flash-image-preview 🆕",
+            "note": "",
+            "options": [
+              "512",
+              "768",
+              "1024",
+              "1280",
+              "1536",
+              "2048",
+              "1k",
+              "2k",
+              "4k"
+            ],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          },
+          {
+            "id": "12::image",
+            "nodeId": "12",
+            "fieldName": "image",
+            "fieldValue": "pasted/46948afdef9592cbf0ec98f2976eb8743c516a4eb4539474c4307044ae56fa88.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 1,
+            "required": false
+          },
+          {
+            "id": "2::image",
+            "nodeId": "2",
+            "fieldName": "image",
+            "fieldValue": "pasted/13839fc6bad36400c5fdb0e595b56a8518ca1dea00e552455bd23fe2e47f3f49.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 2,
+            "required": true
+          },
+          {
+            "id": "13::image",
+            "nodeId": "13",
+            "fieldName": "image",
+            "fieldValue": "pasted/be53aea7278c58fa7f48ab8eae1d772099e4900ceda7e88157ab97cf3f5e64aa.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 3,
+            "required": false
+          },
+          {
+            "id": "3::image",
+            "nodeId": "3",
+            "fieldName": "image",
+            "fieldValue": "pasted/1aa2f479aade662c1820b780dbc397860ef133c1345ccce75bc4d2f089e71eb2.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 4,
+            "required": false
+          },
+          {
+            "id": "4::image",
+            "nodeId": "4",
+            "fieldName": "image",
+            "fieldValue": "pasted/9f196a9affbce26eff7dcb65abb067a498e392e8d6f210b73521d126c09505fd.png",
+            "fieldType": "IMAGE",
+            "label": "image",
+            "enabled": true,
+            "sourceFromUpstream": true,
+            "group": "Load Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 5,
+            "required": false
+          },
+          {
+            "id": "5::filename_prefix",
+            "nodeId": "5",
+            "fieldName": "filename_prefix",
+            "fieldValue": "ComfyUI",
+            "fieldType": "TEXT",
+            "label": "filename_prefix",
+            "enabled": false,
+            "sourceFromUpstream": true,
+            "group": "Save Image",
+            "note": "",
+            "options": [],
+            "random_enabled": false,
+            "min": "",
+            "max": "",
+            "step": "",
+            "imageOrder": 0,
+            "required": false
+          }
+        ],
+        "optionalImageMode": "prune-workflow",
+        "workflowJson": {
+          "1": {
+            "class_type": "RH_Nano_Banana2_Gemini31Flash",
+            "inputs": {
+              "images": [
+                "2",
+                0
+              ],
+              "image3": [
+                "12",
+                0
+              ],
+              "image4": [
+                "13",
+                0
+              ],
+              "seed": 1074325503,
+              "skip_error": false,
+              "channel": "Third-party",
+              "aspectRatio": "9:16",
+              "image1": [
+                "3",
+                0
+              ],
+              "prompt": "图1的模特戴上图2的眼镜/图3的上衣/图4的裤子/图5的背包",
+              "resolution": "1k",
+              "image2": [
+                "4",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "RH NanoBanana2 gemini-3.1-flash-image-preview 🆕"
+            }
+          },
+          "2": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/13839fc6bad36400c5fdb0e595b56a8518ca1dea00e552455bd23fe2e47f3f49.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "3": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/1aa2f479aade662c1820b780dbc397860ef133c1345ccce75bc4d2f089e71eb2.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "4": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/9f196a9affbce26eff7dcb65abb067a498e392e8d6f210b73521d126c09505fd.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "5": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "filename_prefix": "ComfyUI",
+              "images": [
+                "1",
+                0
+              ]
+            },
+            "_meta": {
+              "title": "Save Image"
+            }
+          },
+          "12": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/46948afdef9592cbf0ec98f2976eb8743c516a4eb4539474c4307044ae56fa88.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          },
+          "13": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "pasted/be53aea7278c58fa7f48ab8eae1d772099e4900ceda7e88157ab97cf3f5e64aa.png"
+            },
+            "_meta": {
+              "title": "Load Image"
+            }
+          }
+        },
+        "raw": {
+          "code": 0,
+          "msg": "success",
+          "errorMessages": null,
+          "data": {
+            "prompt": "{\"1\":{\"class_type\":\"RH_Nano_Banana2_Gemini31Flash\",\"inputs\":{\"images\":[\"2\",0],\"image3\":[\"12\",0],\"image4\":[\"13\",0],\"seed\":1074325503,\"skip_error\":false,\"channel\":\"Third-party\",\"aspectRatio\":\"9:16\",\"image1\":[\"3\",0],\"prompt\":\"图1的模特戴上图2的眼镜/图3的上衣/图4的裤子/图5的背包\",\"resolution\":\"1k\",\"image2\":[\"4\",0]},\"_meta\":{\"title\":\"RH NanoBanana2 gemini-3.1-flash-image-preview 🆕\"}},\"12\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/46948afdef9592cbf0ec98f2976eb8743c516a4eb4539474c4307044ae56fa88.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"2\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/13839fc6bad36400c5fdb0e595b56a8518ca1dea00e552455bd23fe2e47f3f49.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"13\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/be53aea7278c58fa7f48ab8eae1d772099e4900ceda7e88157ab97cf3f5e64aa.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"3\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/1aa2f479aade662c1820b780dbc397860ef133c1345ccce75bc4d2f089e71eb2.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"4\":{\"class_type\":\"LoadImage\",\"inputs\":{\"image\":\"pasted/9f196a9affbce26eff7dcb65abb067a498e392e8d6f210b73521d126c09505fd.png\"},\"_meta\":{\"title\":\"Load Image\"}},\"5\":{\"class_type\":\"SaveImage\",\"inputs\":{\"filename_prefix\":\"ComfyUI\",\"images\":[\"1\",0]},\"_meta\":{\"title\":\"Save Image\"}}}"
+          }
+        },
+        "updatedAt": 1779699983108,
+        "workflowId": "2058541134623891458"
+      }
+    ]
+  }
+]
