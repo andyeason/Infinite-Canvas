@@ -46,6 +46,12 @@ const promptPresetApply = document.getElementById('promptPresetApply');
 const promptPresetDelete = document.getElementById('promptPresetDelete');
 const promptPresetNew = document.getElementById('promptPresetNew');
 const promptPresetSave = document.getElementById('promptPresetSave');
+const promptTemplatePanel = document.getElementById('promptTemplatePanel');
+const promptTemplateClose = document.getElementById('promptTemplateClose');
+const promptTemplateSearch = document.getElementById('promptTemplateSearch');
+const promptTemplateCats = document.getElementById('promptTemplateCats');
+const promptTemplateBody = document.getElementById('promptTemplateBody');
+const composerTemplateBtn = document.getElementById('composerTemplateBtn');
 let minimapViewport = document.getElementById('minimapViewport');
 let canvas = null;
 let nodes = [];
@@ -75,7 +81,16 @@ let activeAssetCategoryId = '';
 let mentionSource = 'input';
 let mentionAssetCategoryId = '';
 const PROMPT_PRESETS_KEY = 'smart_canvas_prompt_presets_v1';
+const PROMPT_TEMPLATE_GROUPS_KEY = 'smart_canvas_prompt_template_groups_v1';
+const PROMPT_TEMPLATE_OVERRIDES_KEY = 'smart_canvas_prompt_template_overrides_v1';
 let promptPresets = [];
+let builtinPromptTemplates = [];
+let promptTemplateGroups = [];
+let promptTemplateOverrides = {hiddenBuiltinIds:[], editedBuiltins:{}};
+let promptTemplateCategory = 'all';
+let promptTemplateSelectedId = '';
+let promptTemplateEditing = false;
+let promptTemplateGroupEditMode = false;
 let promptPresetDeleteArmed = false;
 let createMenuPoint = {x:0, y:0};
 let nodeClipboard = null;
@@ -89,9 +104,11 @@ let zoomPreviewState = null;
 let runTimerInterval = null;
 let smartCascadeRunning = false;
 let smartCascadeActiveLoopId = '';
+let smartCascadeStopRequested = false;
 let smartCascadeSilentSelection = false;
 let smartCascadeRunPath = null;
 let smartLoopContext = null;
+let transientSmartCloudLinks = [];
 let runBtnCooldownToken = 0;
 let smartRunStateToken = 0;
 const activeSmartTaskPolls = new Map();
@@ -259,6 +276,29 @@ function cloneSmartSettings(source=settings){
         return {...(source || {})};
     }
 }
+function settingsForStorage(source=settings){
+    const clean = cloneSmartSettings(source);
+    clean.videoTempShLinks = (clean.videoTempShLinks || []).filter(item => item?.manual === true);
+    return clean;
+}
+function mediaItemForStorage(item){
+    if(!item || typeof item !== 'object') return item;
+    const clean = {...item};
+    delete clean.cloudUrl;
+    delete clean.uploadedUrl;
+    delete clean.originalRemoteUrl;
+    delete clean.tempCloudUrl;
+    return clean;
+}
+function canvasForStorage(){
+    const clean = JSON.parse(JSON.stringify(canvas || {}));
+    clean.settings = settingsForStorage(canvasDefaultSmartSettings || initialSmartSettings);
+    (clean.nodes || []).forEach(node => {
+        if(Array.isArray(node.images)) node.images = node.images.map(mediaItemForStorage);
+        if(node.runSettings) node.runSettings = settingsForStorage(node.runSettings);
+    });
+    return clean;
+}
 const RECENT_SMART_SETTINGS_KEY = 'smart_canvas_recent_run_settings_v1';
 const initialSmartSettings = cloneSmartSettings(settings);
 let canvasDefaultSmartSettings = cloneSmartSettings(settings);
@@ -287,7 +327,7 @@ function recentSmartSettingsForMode(modeKey=''){
     return saved && typeof saved === 'object' ? cloneSmartSettings(saved) : {};
 }
 function rememberRecentSmartSettings(source=settings, node=null){
-    const clean = stripOutpaintDisplaySettings(source, node);
+    const clean = stripOutpaintDisplaySettings(settingsForStorage(source), node);
     if(clean.outpaintResolutionLocked === true && clean.resolution === 'custom'){
         clean.resolution = '1k';
         clean.ratio = clean.ratio || 'square';
@@ -297,7 +337,7 @@ function rememberRecentSmartSettings(source=settings, node=null){
     }
     delete clean.outpaintResolutionLocked;
     const key = smartSettingsModeKey(clean);
-    recentSmartSettingsByMode[key] = cloneSmartSettings(clean);
+    recentSmartSettingsByMode[key] = settingsForStorage(clean);
     recentSmartSettingsByMode.__lastKey = key;
     saveRecentSmartSettings();
 }
@@ -438,7 +478,7 @@ function persistActiveSmartSettings(){
     if(!composer?.classList?.contains('open')) return;
     const subject = activeComposerNode();
     if(!subject) return;
-    subject.runSettings = cloneSmartSettings(settings);
+    subject.runSettings = settingsForStorage(settings);
     rememberRecentSmartSettings(settings, subject);
 }
 function backToCanvasList(){ savePromptDraftForCurrent(); window.location.href = '/static/canvas.html?v=2026.05.22.1'; }
@@ -1759,13 +1799,15 @@ function rhMediaForRun(prompt, refs){
 }
 function tempShUploadedUrlFor(url){
     const source = String(url || '');
-    const match = (settings.videoTempShLinks || []).find(item =>
+    const manualLinks = (settings.videoTempShLinks || []).filter(item => item?.manual === true);
+    const links = [...(transientSmartCloudLinks || []), ...manualLinks];
+    const match = links.find(item =>
         item?.url && (item?.source === source || item?.originalLocalUrl === source || item?.url === source)
     );
     return match?.url || url;
 }
 function mediaRefSourceUrl(ref){
-    return ref?.sourceUrl || ref?.originalLocalUrl || ref?.url || '';
+    return localDisplayUrlForMediaItem(ref) || ref?.sourceUrl || ref?.originalLocalUrl || ref?.url || '';
 }
 function applyUploadedUrlsToSmartRefs(refs){
     return (refs || []).map(ref => {
@@ -1818,23 +1860,6 @@ function splitManualMediaUrls(text){
         .map(url => url.trim())
         .filter(Boolean);
 }
-function applyTempShUrlToSmartRef(ref, uploadedUrl){
-    if(!ref?.url || !uploadedUrl) return false;
-    const node = ref?.nodeId ? nodes.find(n => n.id === ref.nodeId) : activeSettingsSubject();
-    if(!node?.images?.length) return false;
-    const index = Number(ref.imageIndex);
-    const targetIndex = Number.isFinite(index) && node.images[index]?.url === ref.url
-        ? index
-        : node.images.findIndex(img => img?.url === ref.url);
-    if(targetIndex < 0 || !node.images[targetIndex]) return false;
-    node.images[targetIndex] = {
-        ...node.images[targetIndex],
-        tempShUrl:uploadedUrl,
-        originalLocalUrl:node.images[targetIndex].originalLocalUrl || ref.sourceUrl || ref.url,
-        kind:mediaKindForItem(ref)
-    };
-    return true;
-}
 async function uploadMediaRefToCloud(ref){
     const kind = mediaKindForItem(ref);
     const sourceUrl = mediaRefSourceUrl(ref);
@@ -1851,11 +1876,10 @@ async function uploadMediaRefToCloud(ref){
     const data = await response.json();
     const uploadedUrl = data.url || '';
     if(!uploadedUrl) throw new Error('云端没有返回链接');
-    settings.videoTempShLinks = [
-        ...(settings.videoTempShLinks || []).filter(item => item?.source !== sourceUrl),
+    transientSmartCloudLinks = [
+        ...(transientSmartCloudLinks || []).filter(item => item?.source !== sourceUrl),
         {source:sourceUrl, url:uploadedUrl, expires:data.expires || '3 days', kind}
     ];
-    applyTempShUrlToSmartRef({...ref, url:sourceUrl, sourceUrl}, uploadedUrl);
     return uploadedUrl;
 }
 function applyManualVideoUrlToSmartRef(ref, manualUrl){
@@ -1932,9 +1956,6 @@ async function uploadCurrentSmartVideosToCloud(){
         for(const ref of localRefs){
             urls.push(await uploadMediaRefToCloud(ref));
         }
-        persistActiveSmartSettings();
-        scheduleSave();
-        render();
         toast(`云端上传完成：${urls.length} 个媒体文件`);
         return urls;
     } finally {
@@ -2314,6 +2335,85 @@ function loadPromptPresets(){
 function savePromptPresets(){
     localStorage.setItem(PROMPT_PRESETS_KEY, JSON.stringify(promptPresets));
 }
+function defaultPromptTemplateGroups(){
+    return [
+        {id:'storyboard', name:'分镜'},
+        {id:'character', name:'角色'},
+        {id:'product', name:'产品'},
+        {id:'lighting', name:'光影'},
+        {id:'mine', name:'我的'}
+    ];
+}
+function loadPromptTemplateGroups(){
+    try {
+        const list = JSON.parse(localStorage.getItem(PROMPT_TEMPLATE_GROUPS_KEY) || '[]');
+        const valid = Array.isArray(list) ? list.filter(g => g?.id && g?.name) : [];
+        const defaults = defaultPromptTemplateGroups();
+        promptTemplateGroups = defaults.map(group => valid.find(g => g.id === group.id) || group);
+        valid.filter(g => !promptTemplateGroups.some(x => x.id === g.id)).forEach(g => promptTemplateGroups.push(g));
+    } catch(e) {
+        promptTemplateGroups = defaultPromptTemplateGroups();
+    }
+}
+function savePromptTemplateGroups(){
+    localStorage.setItem(PROMPT_TEMPLATE_GROUPS_KEY, JSON.stringify(promptTemplateGroups));
+}
+function loadPromptTemplateOverrides(){
+    try {
+        const data = JSON.parse(localStorage.getItem(PROMPT_TEMPLATE_OVERRIDES_KEY) || '{}');
+        promptTemplateOverrides = {
+            hiddenBuiltinIds:Array.isArray(data.hiddenBuiltinIds) ? data.hiddenBuiltinIds : [],
+            editedBuiltins:data.editedBuiltins && typeof data.editedBuiltins === 'object' ? data.editedBuiltins : {}
+        };
+    } catch(e) {
+        promptTemplateOverrides = {hiddenBuiltinIds:[], editedBuiltins:{}};
+    }
+}
+function savePromptTemplateOverrides(){
+    localStorage.setItem(PROMPT_TEMPLATE_OVERRIDES_KEY, JSON.stringify(promptTemplateOverrides));
+}
+async function loadPromptTemplates(){
+    try {
+        const data = await fetch('/api/smart-canvas/prompt-templates').then(r => r.ok ? r.json() : {templates:[]});
+        builtinPromptTemplates = Array.isArray(data.templates) ? data.templates.filter(t => t?.id && t?.positive) : [];
+    } catch(e) {
+        builtinPromptTemplates = [];
+    }
+}
+function promptTemplateItems(){
+    const hidden = new Set(promptTemplateOverrides.hiddenBuiltinIds || []);
+    const builtins = builtinPromptTemplates
+        .filter(t => !hidden.has(t.id))
+        .map(t => ({...t, ...(promptTemplateOverrides.editedBuiltins?.[t.id] || {}), builtin:true}));
+    const mine = promptPresets.map(p => ({
+        id:`mine:${p.id}`,
+        sourceId:p.id,
+        name:p.name || tr('smart.promptPresetUnnamed'),
+        category:p.category || 'mine',
+        scene:'我的提示词预设',
+        positive:p.text || '',
+        negative:'',
+        params:{},
+        builtin:false
+    }));
+    return [...builtins, ...mine];
+}
+function promptTemplateText(template, mode='positive'){
+    const positive = String(template?.positive || '').trim();
+    if(mode === 'positive' || !template?.builtin) return positive;
+    const negative = String(template?.negative || '').trim();
+    const params = Object.entries(template?.params || {})
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
+    return [positive, negative ? `Negative prompt:\n${negative}` : '', params ? `Params:\n${params}` : ''].filter(Boolean).join('\n\n');
+}
+function promptTemplateCategoryLabel(category){
+    if(category === 'all') return '全部';
+    return promptTemplateGroups.find(g => g.id === category)?.name || category;
+}
+function promptTemplateSelectedItem(){
+    return promptTemplateItems().find(item => item.id === promptTemplateSelectedId) || promptTemplateItems()[0] || null;
+}
 function currentPromptPreset(id){
     return promptPresets.find(p => p.id === id) || null;
 }
@@ -2336,7 +2436,7 @@ function resetPromptPresetDeleteState(){
         promptPresetDelete.classList.remove('confirm-danger');
     }
 }
-function createPromptPresetFromNode(node, {openPanel=true}={}){
+function createPromptPresetFromNode(node, {openPanel=true, openTemplatePanel=false}={}){
     const text = String(node?.text || '').trim();
     if(!text){ toast(tr('smart.promptPresetEmpty')); return null; }
     const preset = {id:uid('preset'), name:defaultPromptPresetName(text), text, createdAt:Date.now(), updatedAt:Date.now()};
@@ -2346,6 +2446,22 @@ function createPromptPresetFromNode(node, {openPanel=true}={}){
     render();
     scheduleSave();
     if(openPanel) openPromptPresetPanel(node?.id || '', preset.id, {status:tr('smart.promptPresetSavedNew'), tone:'ok'});
+    if(openTemplatePanel) {
+        promptTemplateCategory = 'mine';
+        promptTemplateSelectedId = `mine:${preset.id}`;
+        promptTemplateEditing = true;
+        openPromptTemplatePanel(node?.id || '', promptTemplateSelectedId);
+    }
+    return preset;
+}
+function createPromptPresetFromComposer(){
+    const text = promptPlainText();
+    if(!text){ toast(tr('smart.promptPresetEmpty')); return null; }
+    const preset = {id:uid('preset'), name:defaultPromptPresetName(text), text, category:'mine', createdAt:Date.now(), updatedAt:Date.now()};
+    promptPresets.unshift(preset);
+    savePromptPresets();
+    savePromptDraftForCurrent();
+    scheduleSave();
     return preset;
 }
 function savePromptNodeAsPreset(node){
@@ -2392,9 +2508,318 @@ function closePromptPresetPanel(){
     promptPresetPanel?.classList.remove('open');
     resetPromptPresetDeleteState();
 }
+function promptTemplateScrollSnapshot(){
+    if(!promptTemplatePanel) return null;
+    return {
+        panelTop:promptTemplatePanel.scrollTop || 0,
+        tabLeft:promptTemplatePanel.querySelector('.prompt-template-tabs')?.scrollLeft || 0,
+        listTop:promptTemplatePanel.querySelector('.prompt-template-list')?.scrollTop || 0,
+        detailTop:promptTemplatePanel.querySelector('.prompt-template-preview-content')?.scrollTop || 0
+    };
+}
+function restorePromptTemplateScroll(snapshot){
+    if(!snapshot || !promptTemplatePanel) return;
+    requestAnimationFrame(() => {
+        promptTemplatePanel.scrollTop = snapshot.panelTop || 0;
+        const tabs = promptTemplatePanel.querySelector('.prompt-template-tabs');
+        const list = promptTemplatePanel.querySelector('.prompt-template-list');
+        const detail = promptTemplatePanel.querySelector('.prompt-template-preview-content');
+        if(tabs) tabs.scrollLeft = snapshot.tabLeft || 0;
+        if(list) list.scrollTop = snapshot.listTop || 0;
+        if(detail) detail.scrollTop = snapshot.detailTop || 0;
+    });
+}
+function renderPromptTemplatePanel(options={}){
+    if(!promptTemplatePanel || !promptTemplateBody || !promptTemplateCats) return;
+    const scrollSnapshot = options.preserveScroll === false ? null : promptTemplateScrollSnapshot();
+    const query = String(promptTemplateSearch?.value || '').trim().toLowerCase();
+    const allTemplates = promptTemplateItems();
+    const categories = [{id:'all', name:'全部'}, ...promptTemplateGroups];
+    const groupCounts = allTemplates.reduce((map, item) => {
+        map[item.category || 'mine'] = (map[item.category || 'mine'] || 0) + 1;
+        return map;
+    }, {all:allTemplates.length});
+    promptTemplateCats.innerHTML = promptTemplateGroupEditMode ? `
+        <div class="prompt-template-group-panel">
+            <div class="prompt-template-group-title">
+                <div>
+                    <strong>分组管理</strong>
+                    <span>这里只调整上方分类，不影响模板内容</span>
+                </div>
+                <div class="prompt-template-group-tools">
+                    <button type="button" data-template-cat-new><i data-lucide="plus"></i><span>新增</span></button>
+                    <button type="button" class="primary" data-template-group-edit><i data-lucide="check"></i><span>完成</span></button>
+                </div>
+            </div>
+            <div class="prompt-template-group-list">
+                ${promptTemplateGroups.map(group => `
+                    <div class="prompt-template-group-row ${['storyboard','character','product','lighting','mine'].includes(group.id) ? '' : 'has-delete'}">
+                        <button type="button" class="group-name ${group.id === promptTemplateCategory ? 'active' : ''}" data-template-cat="${escapeHtml(group.id)}">
+                            <span>${escapeHtml(group.name)}</span>
+                            <small>${groupCounts[group.id] || 0}</small>
+                        </button>
+                        <button type="button" class="group-tool" data-template-cat-edit="${escapeHtml(group.id)}" title="重命名"><i data-lucide="pencil"></i></button>
+                        ${['storyboard','character','product','lighting','mine'].includes(group.id) ? '' : `<button type="button" class="group-tool danger" data-template-cat-delete="${escapeHtml(group.id)}" title="删除"><i data-lucide="trash-2"></i></button>`}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    ` : `
+        <div class="prompt-template-nav">
+            <div class="prompt-template-tabs">
+                ${categories.map(cat => `
+                    <button type="button" class="${cat.id === promptTemplateCategory ? 'active' : ''}" data-template-cat="${escapeHtml(cat.id)}">
+                        <span>${escapeHtml(cat.name)}</span>
+                        <small>${groupCounts[cat.id] || 0}</small>
+                    </button>
+                `).join('')}
+            </div>
+            <button type="button" class="prompt-template-manage-groups" data-template-group-edit><i data-lucide="settings-2"></i><span>管理分组</span></button>
+        </div>
+    `;
+    const items = allTemplates.filter(item => {
+        if(promptTemplateCategory !== 'all' && item.category !== promptTemplateCategory) return false;
+        if(!query) return true;
+        return [item.name, item.scene, item.positive, item.negative].some(value => String(value || '').toLowerCase().includes(query));
+    });
+    if(items.length && !items.some(item => item.id === promptTemplateSelectedId)) promptTemplateSelectedId = items[0].id;
+    const selected = items.find(item => item.id === promptTemplateSelectedId) || items[0] || null;
+    const selectedPreset = selected?.builtin
+        ? {id:selected.id, name:selected.name || '', text:selected.positive || '', category:selected.category || 'storyboard', builtin:true}
+        : (selected ? currentPromptPreset(selected.sourceId) : null);
+    const target = promptTemplatePanel.dataset.target || 'node';
+    const node = nodes.find(n => n.id === promptTemplatePanel.dataset.nodeId);
+    const nodeHasText = target === 'composer' ? Boolean(promptPlainText()) : Boolean(String(node?.text || '').trim());
+    const editMode = Boolean(promptTemplateEditing && selectedPreset);
+    promptTemplateBody.innerHTML = `
+        <div class="prompt-template-list">
+            <div class="prompt-template-list-tools">
+                <button type="button" ${nodeHasText ? '' : 'disabled'} data-template-save-current><i data-lucide="bookmark-plus"></i><span>存当前</span></button>
+                <button type="button" data-template-new><i data-lucide="file-plus-2"></i><span>新模板</span></button>
+            </div>
+            ${items.length ? items.map(item => `<button type="button" class="prompt-template-card ${item.id === selected?.id ? 'active' : ''}" data-template-id="${escapeHtml(item.id)}">
+                <span class="prompt-template-card-top">
+                    <span class="prompt-template-name">${escapeHtml(item.name)}</span>
+                    <span class="prompt-template-source">${escapeHtml(item.builtin ? '内置' : '我的')}</span>
+                </span>
+                <span class="prompt-template-scene">${escapeHtml(item.scene || item.positive || '')}</span>
+                <span class="prompt-template-tag">${escapeHtml(promptTemplateCategoryLabel(item.category || 'mine'))}</span>
+            </button>`).join('') : `<div class="prompt-template-list-empty">没有匹配的模板</div>`}
+        </div>
+        <div class="prompt-template-detail">
+            ${selected ? `
+                <div class="prompt-template-detail-head">
+                    <div>
+                        <strong>${escapeHtml(selected.name || '')}</strong>
+                        <span>${escapeHtml(promptTemplateCategoryLabel(selected.category || ''))} · ${escapeHtml(selected.builtin ? '内置模板' : '我的模板')}</span>
+                    </div>
+                    ${editMode ? '' : `
+                        <div class="prompt-template-icon-actions">
+                            <button type="button" data-template-edit title="修改模板"><i data-lucide="pencil"></i><span>修改</span></button>
+                            <button type="button" class="danger" data-template-delete title="删除模板"><i data-lucide="trash-2"></i><span>删除</span></button>
+                        </div>
+                    `}
+                </div>
+            ${editMode ? `
+                <div class="prompt-template-edit-fields">
+                    <label>模板名称</label>
+                    <input data-template-edit-name value="${escapeAttr(selectedPreset.name || '')}" placeholder="模板名称">
+                    <label>所属分组</label>
+                    <select data-template-edit-category>
+                        ${promptTemplateGroups.map(group => `<option value="${escapeAttr(group.id)}" ${group.id === (selectedPreset.category || selected?.category || 'mine') ? 'selected' : ''}>${escapeHtml(group.name)}</option>`).join('')}
+                    </select>
+                    <label>模板内容</label>
+                    <textarea data-template-edit-text placeholder="模板内容">${escapeHtml(selectedPreset.text || '')}</textarea>
+                </div>
+            ` : `
+                <div class="prompt-template-preview-content">
+                <div class="prompt-template-section">
+                    <label>正向提示词</label>
+                    <p>${escapeHtml(selected?.positive || '')}</p>
+                </div>
+                ${selected?.negative ? `<div class="prompt-template-section">
+                    <label>负向提示词</label>
+                    <p>${escapeHtml(selected.negative)}</p>
+                </div>` : ''}
+                ${Object.keys(selected?.params || {}).length ? `<div class="prompt-template-section">
+                    <label>参数建议</label>
+                    <p>${escapeHtml(Object.entries(selected.params).map(([k,v]) => `${k}: ${v}`).join('\n'))}</p>
+                </div>` : ''}
+                </div>
+            `}
+            <div class="prompt-template-actions">
+                ${editMode ? `
+                    <button type="button" data-template-edit-cancel><i data-lucide="x"></i><span>取消</span></button>
+                    <button type="button" class="danger" data-template-delete><i data-lucide="trash-2"></i><span>删除</span></button>
+                    <button type="button" class="primary" data-template-edit-save><i data-lucide="save"></i><span>保存</span></button>
+                ` : `
+                    <button type="button" data-template-apply="positive"><i data-lucide="corner-down-left"></i><span>正向</span></button>
+                    <button type="button" class="primary" data-template-apply="full"><i data-lucide="wand-sparkles"></i><span>完整应用</span></button>
+                `}
+            </div>
+            ` : `<div class="prompt-template-empty">选择或新建一个模板</div>`}
+        </div>
+    `;
+    refreshIcons();
+    restorePromptTemplateScroll(scrollSnapshot);
+}
+function activePromptTemplateNodeId(){
+    return promptTemplatePanel?.classList?.contains('open') && promptTemplatePanel.dataset.target !== 'composer' ? (promptTemplatePanel.dataset.nodeId || '') : '';
+}
+function syncComposerTemplateButton(){
+    if(!composerTemplateBtn || !promptTemplatePanel) return;
+    const active = promptTemplatePanel.classList.contains('open') && promptTemplatePanel.dataset.target === 'composer';
+    composerTemplateBtn.classList.toggle('active', active);
+    composerTemplateBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+}
+function openPromptTemplatePanel(nodeId='', templateId='', options={}){
+    if(!promptTemplatePanel) return;
+    const target = options.target === 'composer' ? 'composer' : 'node';
+    promptTemplatePanel.dataset.target = target;
+    promptTemplatePanel.dataset.nodeId = nodeId || '';
+    if(promptTemplatePanel.parentElement !== shell) shell.appendChild(promptTemplatePanel);
+    if(templateId) promptTemplateSelectedId = templateId;
+    if(!promptTemplateSelectedId) promptTemplateSelectedId = promptTemplateItems()[0]?.id || '';
+    renderPromptTemplatePanel();
+    promptTemplatePanel.classList.add('open');
+    if(target === 'node' && nodeId){
+        selectedId = nodeId;
+        selectedIds = [];
+        selectedImage = {nodeId:'', index:-1};
+    }
+    render();
+    syncComposerTemplateButton();
+    promptTemplateSearch?.focus();
+}
+function closePromptTemplatePanel(){
+    promptTemplatePanel?.classList.remove('open');
+    syncComposerTemplateButton();
+    render();
+}
+function applyPromptTemplateToNode(mode='positive'){
+    const template = promptTemplateItems().find(item => item.id === promptTemplateSelectedId);
+    if(!template) return;
+    if(promptTemplatePanel?.dataset.target === 'composer'){
+        const text = promptTemplateText(template, mode);
+        setPromptText(text);
+        delete promptInput.dataset.preserveDraftOnce;
+        savePromptDraftForCurrent();
+        renderInputThumbsRow(selectedNode());
+        closePromptTemplatePanel();
+        scheduleSave();
+        return;
+    }
+    const node = nodes.find(n => n.id === promptTemplatePanel?.dataset.nodeId);
+    if(!node) return;
+    node.text = promptTemplateText(template, mode);
+    node.promptPresetId = template.builtin ? '' : template.sourceId || '';
+    closePromptTemplatePanel();
+    render();
+    scheduleSave();
+}
+function saveCurrentPromptAsTemplate(){
+    const preset = promptTemplatePanel?.dataset.target === 'composer'
+        ? createPromptPresetFromComposer()
+        : createPromptPresetFromNode(nodes.find(n => n.id === promptTemplatePanel?.dataset.nodeId), {openPanel:false});
+    if(!preset) return;
+    promptTemplateCategory = 'mine';
+    promptTemplateSelectedId = `mine:${preset.id}`;
+    promptTemplateEditing = true;
+    renderPromptTemplatePanel({preserveScroll:false});
+}
+function createBlankPromptTemplate(){
+    const category = promptTemplateCategory && promptTemplateCategory !== 'all' ? promptTemplateCategory : 'mine';
+    const preset = {id:uid('preset'), name:'新模板', text:'', category, createdAt:Date.now(), updatedAt:Date.now()};
+    promptPresets.unshift(preset);
+    savePromptPresets();
+    promptTemplateCategory = category;
+    promptTemplateSelectedId = `mine:${preset.id}`;
+    promptTemplateEditing = true;
+    renderPromptTemplatePanel({preserveScroll:false});
+}
+function savePromptTemplateEdit(){
+    const item = promptTemplateSelectedItem();
+    if(!item) return;
+    const name = promptTemplatePanel.querySelector('[data-template-edit-name]')?.value?.trim() || '';
+    const text = promptTemplatePanel.querySelector('[data-template-edit-text]')?.value?.trim() || '';
+    const category = promptTemplatePanel.querySelector('[data-template-edit-category]')?.value || 'mine';
+    if(!name || !text){ toast('模板名称和内容不能为空'); return; }
+    if(item.builtin){
+        promptTemplateOverrides.editedBuiltins = promptTemplateOverrides.editedBuiltins || {};
+        promptTemplateOverrides.editedBuiltins[item.id] = {
+            ...(promptTemplateOverrides.editedBuiltins[item.id] || {}),
+            name,
+            positive:text,
+            category
+        };
+        savePromptTemplateOverrides();
+    } else {
+        const preset = currentPromptPreset(item.sourceId);
+        if(!preset) return;
+        const idx = promptPresets.findIndex(p => p.id === preset.id);
+        if(idx >= 0) promptPresets[idx] = {...promptPresets[idx], name, text, category, updatedAt:Date.now()};
+        savePromptPresets();
+        nodes.forEach(node => { if(node.promptPresetId === preset.id) node.text = text; });
+    }
+    promptTemplateEditing = false;
+    renderPromptTemplatePanel();
+    render();
+    scheduleSave();
+}
+function deletePromptTemplate(){
+    const item = promptTemplateSelectedItem();
+    if(!item) return;
+    if(item.builtin){
+        promptTemplateOverrides.hiddenBuiltinIds = [...new Set([...(promptTemplateOverrides.hiddenBuiltinIds || []), item.id])];
+        savePromptTemplateOverrides();
+    } else {
+        promptPresets = promptPresets.filter(p => p.id !== item.sourceId);
+        nodes.forEach(node => { if(node.promptPresetId === item.sourceId) node.promptPresetId = ''; });
+        savePromptPresets();
+    }
+    promptTemplateSelectedId = '';
+    promptTemplateEditing = false;
+    renderPromptTemplatePanel({preserveScroll:false});
+    render();
+    scheduleSave();
+}
+function createPromptTemplateGroup(){
+    const name = window.prompt('新分组名称', '新分组');
+    if(!String(name || '').trim()) return;
+    const group = {id:uid('tpl_group'), name:String(name).trim().slice(0, 24)};
+    promptTemplateGroups.push(group);
+    savePromptTemplateGroups();
+    promptTemplateCategory = group.id;
+    renderPromptTemplatePanel({preserveScroll:false});
+}
+function renamePromptTemplateGroup(groupId){
+    const group = promptTemplateGroups.find(g => g.id === groupId);
+    if(!group) return;
+    const name = window.prompt('分组名称', group.name || '');
+    if(!String(name || '').trim()) return;
+    group.name = String(name).trim().slice(0, 24);
+    savePromptTemplateGroups();
+    renderPromptTemplatePanel();
+}
+function deletePromptTemplateGroup(groupId){
+    if(['storyboard','character','product','lighting','mine'].includes(groupId)){
+        renamePromptTemplateGroup(groupId);
+        return;
+    }
+    if(!window.confirm('删除分组？该分组里的我的模板会移动到“我的”。')) return;
+    promptTemplateGroups = promptTemplateGroups.filter(g => g.id !== groupId);
+    promptPresets = promptPresets.map(p => p.category === groupId ? {...p, category:'mine'} : p);
+    Object.entries(promptTemplateOverrides.editedBuiltins || {}).forEach(([id, item]) => {
+        if(item?.category === groupId) promptTemplateOverrides.editedBuiltins[id] = {...item, category:'mine'};
+    });
+    if(promptTemplateCategory === groupId) promptTemplateCategory = 'all';
+    savePromptTemplateGroups();
+    savePromptPresets();
+    savePromptTemplateOverrides();
+    renderPromptTemplatePanel({preserveScroll:false});
+}
 function editPromptPresetForNode(node){
-    if(!promptPresets.length) savePromptNodeAsPreset(node);
-    else openPromptPresetPanel(node?.id || '', node?.promptPresetId || '');
+    openPromptTemplatePanel(node?.id || '', node?.promptPresetId ? `mine:${node.promptPresetId}` : '');
 }
 function assetCategories(type='image'){
     return (assetLibrary.categories || []).filter(cat => (cat.type || 'image') === type);
@@ -2422,6 +2847,7 @@ function setAssetLibraryFromResponse(data){
 function toggleAssetLibrary(open=!assetLibraryOpen){
     assetLibraryOpen = !!open;
     assetPanel.classList.toggle('open', assetLibraryOpen);
+    assetToggle?.classList.toggle('active', assetLibraryOpen);
     if(assetLibraryOpen) loadAssetLibrary();
     render();
 }
@@ -2652,24 +3078,26 @@ async function saveCanvas(){
     if(!canvasId || !canvas) return;
     savePromptDraftForCurrent();
     nodes.forEach(node => {
-        node.images = (node.images || []).map(img => stripImageGenerationMeta(img));
+        node.images = (node.images || []).map(img => mediaItemForStorage(stripImageGenerationMeta(img)));
+        if(node.runSettings) node.runSettings = settingsForStorage(node.runSettings);
     });
     canvas.nodes = nodes;
-    canvas.settings = cloneSmartSettings(canvasDefaultSmartSettings || initialSmartSettings);
+    canvas.settings = settingsForStorage(canvasDefaultSmartSettings || initialSmartSettings);
     canvas.viewport = {...viewport};
+    const storageCanvas = canvasForStorage();
     try {
         const res = await fetch(`/api/canvases/${encodeURIComponent(canvasId)}`, {
             method:'PUT',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
-                title:canvas.title || tr('smart.title'),
-                icon:canvas.icon || 'sparkles',
-                nodes,
-                connections:canvas.connections || [],
-                viewport:canvas.viewport || {x:0,y:0,scale:1},
-                logs:canvas.logs || [],
-                settings:canvas.settings,
-                base_updated_at:canvas.updated_at || 0
+                title:storageCanvas.title || tr('smart.title'),
+                icon:storageCanvas.icon || 'sparkles',
+                nodes:storageCanvas.nodes || [],
+                connections:storageCanvas.connections || [],
+                viewport:storageCanvas.viewport || {x:0,y:0,scale:1},
+                logs:storageCanvas.logs || [],
+                settings:storageCanvas.settings,
+                base_updated_at:storageCanvas.updated_at || canvas.updated_at || 0
             })
         });
         if(res.ok){
@@ -2992,6 +3420,29 @@ function mediaKindForItem(img){
     if(isVideoMediaItem(img)) return 'video';
     return 'image';
 }
+function localDisplayUrlForMediaItem(img){
+    if(!img) return '';
+    const candidates = [
+        img.originalLocalUrl,
+        img.localUrl,
+        img.sourceUrl,
+        img.local_url,
+        img.source_url,
+        img.url
+    ];
+    const local = candidates.find(url => url && !/^https?:\/\//i.test(String(url)));
+    return local || img.url || '';
+}
+function imageForDisplay(img){
+    if(!img || typeof img !== 'object') return img;
+    const localUrl = localDisplayUrlForMediaItem(img);
+    if(!localUrl || localUrl === img.url) return img;
+    return {
+        ...img,
+        url:localUrl,
+        originalLocalUrl:img.originalLocalUrl || localUrl
+    };
+}
 function resultMediaUrls(result){
     const urls = [];
     const add = value => {
@@ -3048,7 +3499,7 @@ function thumbMediaHtml(img){
     if(isFileMediaItem(img) || isTextMediaItem(img)) return `<div class="media-thumb file-thumb" data-media-url="${escapeAttr(img.url || '')}" data-media-kind="${escapeAttr(mediaKindForItem(img))}"><i data-lucide="${isTextMediaItem(img) ? 'file-text' : 'file'}"></i><span>${escapeHtml(img.name || (isTextMediaItem(img) ? 'Text' : 'File'))}</span></div>`;
     if(isAudioMediaItem(img)) return `<div class="media-thumb audio-thumb" data-media-url="${escapeAttr(img.url || '')}" data-media-kind="audio"><i data-lucide="file-audio"></i><span>${escapeHtml(img.name || 'Audio')}</span></div>`;
     if(isVideoMediaItem(img)) return `<div class="media-thumb video-thumb"><video src="${escapeHtml(img.url)}" data-url="${escapeHtml(img.url)}" muted preload="metadata" playsinline disablepictureinpicture controlslist="nodownload noplaybackrate noremoteplayback"></video></div>`;
-    return `<img src="${escapeHtml(img.url)}" draggable="false">`;
+    return `<img src="${escapeHtml(displayMediaUrl(img))}" data-original-src="${escapeAttr(img.url || '')}" draggable="false">`;
 }
 function imageResolutionLabel(img){
     const w = Number(img?.natural_w || img?.width || img?.w || 0);
@@ -3093,7 +3544,7 @@ function singleMediaHtml(img, w, h){
     if(isFileMediaItem(img) || isTextMediaItem(img)) return `<div class="node-img media-card media-file-card" style="width:${w}px;height:${h}px"><div class="media-card-icon"><i data-lucide="${isTextMediaItem(img) ? 'file-text' : 'file'}"></i></div><div class="media-card-title">${escapeHtml(img.name || (isTextMediaItem(img) ? 'Text' : 'File'))}</div><div class="media-card-sub">${isTextMediaItem(img) ? 'TEXT' : 'FILE'}</div></div>`;
     if(isAudioMediaItem(img)) return `<div class="node-img media-card media-audio-card" style="width:${w}px;height:${h}px"><div class="media-card-icon"><i data-lucide="file-audio"></i></div><div class="media-card-title">${escapeHtml(img.name || 'Audio')}</div><div class="media-card-sub">AUDIO</div><audio src="${escapeAttr(img.url || '')}" data-url="${escapeAttr(img.url || '')}" controls preload="metadata"></audio></div>`;
     if(isVideoMediaItem(img)) return `<div class="node-img media-card media-video-card" style="width:${w}px;height:${h}px"><video src="${escapeHtml(img.url)}" data-url="${escapeHtml(img.url)}" controls muted preload="metadata" playsinline disablepictureinpicture controlslist="nodownload noplaybackrate noremoteplayback"></video></div>`;
-    return `<img class="node-img" src="${escapeHtml(img.url)}" draggable="false" style="width:${w}px;height:${h}px">`;
+    return `<img class="node-img" src="${escapeHtml(displayMediaUrl(img))}" data-original-src="${escapeAttr(img.url || '')}" draggable="false" style="width:${w}px;height:${h}px">`;
 }
 function smartNodeHasLiveMedia(node){
     return Boolean(!node?.pending && (node?.images || []).some(img => isVideoMediaItem(img) || isAudioMediaItem(img)));
@@ -3104,7 +3555,7 @@ function mediaSignaturePartFromElement(itemEl){
     if(media){
         const tag = media.tagName.toLowerCase();
         const kind = tag === 'video' ? 'video' : tag === 'audio' ? 'audio' : 'image';
-        const url = media.dataset?.url || media.getAttribute('src') || '';
+        const url = media.dataset?.url || media.dataset?.originalSrc || media.getAttribute('src') || '';
         return `${kind}:${url}`;
     }
     const audioThumb = itemEl?.querySelector?.('.audio-thumb[data-media-url]');
@@ -3192,15 +3643,63 @@ function smartRunTaskLabel(run){
 function outputUrlLooksVideo(url){
     return /\.(mp4|webm|mov|m4v)(\?|$)/.test(String(url || '').toLowerCase());
 }
+function proxiedMediaUrl(itemOrUrl, name=''){
+    const url = typeof itemOrUrl === 'string' ? itemOrUrl : (itemOrUrl?.url || '');
+    if(!url || String(url).startsWith('/assets/') || String(url).startsWith('/output/') || String(url).startsWith('data:') || String(url).startsWith('blob:')) return url;
+    const filename = name || (typeof itemOrUrl === 'object' ? (itemOrUrl.name || '') : '') || fileNameFromUrl(url) || 'preview';
+    return `/api/download-output?inline=1&url=${encodeURIComponent(url)}&name=${encodeURIComponent(filename)}`;
+}
+function displayMediaUrl(itemOrUrl, name=''){
+    const url = typeof itemOrUrl === 'string' ? itemOrUrl : (itemOrUrl?.url || '');
+    if(/^https?:\/\//i.test(String(url || ''))) return proxiedMediaUrl(itemOrUrl, name);
+    return url;
+}
+function bindImageProxyFallback(imgEl, itemOrUrl){
+    if(!imgEl || imgEl.dataset.proxyFallbackBound === '1') return;
+    imgEl.dataset.proxyFallbackBound = '1';
+    imgEl.addEventListener('error', () => {
+        if(imgEl.dataset.proxyFallbackTried === '1') return;
+        const fallback = proxiedMediaUrl(itemOrUrl);
+        if(!fallback || fallback === imgEl.getAttribute('src')) return;
+        imgEl.dataset.proxyFallbackTried = '1';
+        imgEl.src = fallback;
+    });
+}
 function safeExportFileName(name, fallback='download.zip'){
     const cleaned = String(name || fallback).replace(/[\\/:*?"<>|]+/g, '_').trim();
     return cleaned || fallback;
+}
+function fileNameFromUrl(url=''){
+    try {
+        const parsed = new URL(String(url || ''), window.location.href);
+        return decodeURIComponent(parsed.pathname.split('/').filter(Boolean).pop() || '');
+    } catch(e) {
+        return decodeURIComponent(String(url || '').split('?')[0].split('#')[0].split('/').filter(Boolean).pop() || '');
+    }
+}
+function extensionForMediaItem(item, fallback='.png'){
+    const source = [item?.name, item?.url].map(value => String(value || '').split('?')[0].split('#')[0]).find(value => /\.[a-z0-9]{2,8}$/i.test(value));
+    if(source) return source.match(/(\.[a-z0-9]{2,8})$/i)?.[1] || fallback;
+    const kind = mediaKindForItem(item);
+    if(kind === 'video') return '.mp4';
+    if(kind === 'audio') return '.mp3';
+    if(kind === 'text') return '.txt';
+    return fallback;
+}
+function downloadNameForMediaItem(item, fallbackPrefix='canvas-output'){
+    const localName = fileNameFromUrl(item?.url || '');
+    const preferred = localName || item?.name || '';
+    const ext = extensionForMediaItem(item);
+    const randomName = `${fallbackPrefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}${ext}`;
+    let name = safeExportFileName(preferred || randomName, randomName);
+    if(!/\.[a-z0-9]{2,8}$/i.test(name)) name += ext;
+    return name;
 }
 function downloadPreviewImage(){
     const node = nodes.find(n => n.id === previewNavState.nodeId);
     const image = node?.images?.[previewNavState.index];
     if(!image?.url) return;
-    const name = image.name || image.url.split('/').pop() || 'image.png';
+    const name = downloadNameForMediaItem(image, 'image');
     const link = document.createElement('a');
     link.href = `/api/download-output?url=${encodeURIComponent(image.url)}&name=${encodeURIComponent(name)}`;
     link.download = name;
@@ -3210,7 +3709,7 @@ function downloadPreviewImage(){
 }
 function downloadPreviewFile(item){
     if(!item?.url) return;
-    const name = item.name || item.url.split('/').pop() || 'output';
+    const name = downloadNameForMediaItem(item, 'output');
     const link = document.createElement('a');
     link.href = `/api/download-output?url=${encodeURIComponent(item.url)}&name=${encodeURIComponent(name)}`;
     link.download = name;
@@ -3220,7 +3719,17 @@ function downloadPreviewFile(item){
 }
 function previewDownloadGroupItems(){
     const node = nodes.find(n => n.id === previewNavState.nodeId);
-    return (node?.images || []).filter(item => item?.url);
+    return (node?.images || [])
+        .filter(item => item?.url)
+        .map((item, index) => ({...item, __index:index}))
+        .sort((a, b) => {
+            const ga = a.grid || {};
+            const gb = b.grid || {};
+            const rowDiff = Number(ga.row ?? a.__index) - Number(gb.row ?? b.__index);
+            if(rowDiff) return rowDiff;
+            const colDiff = Number(ga.col ?? a.__index) - Number(gb.col ?? b.__index);
+            return colDiff || a.__index - b.__index;
+        });
 }
 async function downloadPreviewGroup(){
     const node = nodes.find(n => n.id === previewNavState.nodeId);
@@ -3231,7 +3740,11 @@ async function downloadPreviewGroup(){
         const response = await fetch('/api/canvas-assets/download', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({filename, urls:items.map(item => item.url).filter(Boolean)})
+            body:JSON.stringify({
+                filename,
+                urls:items.map(item => item.url).filter(Boolean),
+                items:items.map((item, index) => ({url:item.url, name:downloadNameForMediaItem(item, `image-${String(index + 1).padStart(2, '0')}`)}))
+            })
         });
         if(!response.ok) throw new Error((await response.text()) || '批量下载失败');
         const blob = await response.blob();
@@ -3383,11 +3896,10 @@ function promptNodeBodyHtml(node){
     node.llmProvider = resolveChatProviderId(node.llmProvider || '');
     node.llmModel = resolveChatModel(node.llmModel || '', node.llmProvider);
     node.llmSystemEnabled = node.llmSystemEnabled === true;
-    if(node.promptPresetId && !promptPresets.some(p => p.id === node.promptPresetId)) node.promptPresetId = '';
-    const presetOptions = `<option value="">${escapeHtml(tr('smart.promptPreset'))}</option>${promptPresets.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === node.promptPresetId ? 'selected' : ''}>${escapeHtml(p.name || tr('smart.promptPresetUnnamed'))}</option>`).join('')}`;
     const readonly = node.llmEnabled ? 'readonly' : '';
     const systemPrompt = (node.llmSystemPrompt || '').trim();
     const inputThumbs = smartNodeInputThumbsHtml(promptNodeInputImages(node));
+    const templateActive = activePromptTemplateNodeId() === node.id;
     const llmParams = node.llmEnabled ? `
         <div class="prompt-node-llm">
             <select class="prompt-node-control prompt-llm-provider">${chatProviderOptions(node.llmProvider)}</select>
@@ -3402,9 +3914,7 @@ function promptNodeBodyHtml(node){
     return `<div class="prompt-node-card">
         <textarea class="prompt-node-text prompt-node-control" ${readonly} placeholder="${escapeHtml(tr('smart.promptPlaceholderNode'))}">${escapeHtml(node.text || '')}</textarea>
         <div class="prompt-node-tools">
-            <select class="prompt-node-control prompt-node-preset-select">${presetOptions}</select>
-            <button class="prompt-node-pill prompt-node-control prompt-preset-save" type="button"><i data-lucide="save"></i><span>${escapeHtml(tr('common.save'))}</span></button>
-            <button class="prompt-node-pill prompt-node-control prompt-preset-edit" type="button"><i data-lucide="pencil"></i><span>${escapeHtml(tr('common.edit'))}</span></button>
+            <button class="prompt-node-pill prompt-node-control prompt-preset-edit ${templateActive ? 'active' : ''}" type="button"><i data-lucide="library"></i><span>模板库</span></button>
             <button class="prompt-node-pill prompt-llm-toggle ${node.llmEnabled ? 'active' : ''}" type="button"><i data-lucide="sparkles"></i><span>LLM</span></button>
         </div>
         ${node.llmEnabled ? inputThumbs : ''}
@@ -3488,6 +3998,9 @@ function smartLoopBodyHtml(node){
         : tr('smart.loopPromptHintVariable');
     const currentUpstreamPrompt = smartLoopSelectedInputPrompt(node, {index:node.loopStart});
     const defaultPrompt = tr('smart.loopDefaultPrompt') || '现在生成第《计数》张卖点图片';
+    const loopRunning = smartCascadeRunning && smartCascadeActiveLoopId === node.id;
+    const loopStopping = loopRunning && smartCascadeStopRequested;
+    const otherLoopRunning = smartCascadeRunning && !loopRunning;
     return `<div class="loop-smart-card ${node.imageInput ? 'has-image' : ''} ${node.showPrompt ? 'has-prompt' : ''}">
         <div class="loop-smart-row loop-smart-top">
             <div class="loop-smart-seg">
@@ -3527,14 +4040,14 @@ function smartLoopBodyHtml(node){
         <div class="loop-smart-footer">
             ${loopNumberControlHtml({label:tr('canvas.loopImageStart'), value:node.loopStart, key:'loopStart', max:9999, quick:[1,2,3,4,5,6,8,10]})}
             ${loopNumberControlHtml({label:tr('canvas.loopCount'), value:node.count, key:'count', max:100, quick:[1,2,3,4,5,6,8,10]})}
-            <button class="loop-smart-control loop-smart-run" type="button" data-loop-run="${escapeHtml(node.id)}" ${smartCascadeRunning && smartCascadeActiveLoopId === node.id ? 'disabled' : ''}><i data-lucide="workflow"></i><span>${escapeHtml(smartCascadeRunning && smartCascadeActiveLoopId === node.id ? tr('common.running') : tr('smart.loopRunAll'))}</span></button>
+            <button class="loop-smart-control loop-smart-run ${loopRunning ? 'is-stop' : ''}" type="button" data-loop-run="${escapeHtml(node.id)}" ${otherLoopRunning || loopStopping ? 'disabled' : ''}><i data-lucide="${loopRunning ? 'square' : 'workflow'}"></i><span>${escapeHtml(loopRunning ? smartCascadeStopText(loopStopping) : tr('smart.loopRunAll'))}</span></button>
         </div>
     </div>`;
 }
 function nodeBodyHtml(node, layout){
     if(node.type === 'smart-prompt') return promptNodeBodyHtml(node);
     if(node.type === 'smart-loop') return smartLoopBodyHtml(node);
-    const imgs = node.images || [];
+    const imgs = (node.images || []).map(imageForDisplay);
     if(node.queued && imgs.length === 0 && !node.pending){
         return `<div class="loading-cell single queued" style="width:${layout.width}px;height:${layout.height}px"></div>`;
     }
@@ -3707,6 +4220,7 @@ function measureSmartNodeImages(){
         const node = nodes.find(n => n.id === nodeEl?.dataset.id);
         const index = Number(itemEl?.dataset.imageIndex ?? 0);
         const image = node?.images?.[index];
+        if(imgEl.tagName?.toLowerCase() === 'img' && image?.url) bindImageProxyFallback(imgEl, image);
         if(!node || !image || image.natural_w || image.natural_h) return;
         const apply = () => {
             const w = imgEl.naturalWidth || imgEl.videoWidth || 0;
@@ -3776,21 +4290,6 @@ function bindPromptNodeControls(el, node){
         bindScrollableText(textEl);
         textEl.oninput = e => { node.text = e.target.value; scheduleSave(); };
     }
-    const presetSelect = el.querySelector('.prompt-node-preset-select');
-    if(presetSelect) presetSelect.onchange = e => {
-        e.stopPropagation();
-        const preset = currentPromptPreset(e.target.value);
-        node.promptPresetId = preset?.id || '';
-        if(preset) node.text = preset.text || '';
-        render();
-        scheduleSave();
-    };
-    const presetSave = el.querySelector('.prompt-preset-save');
-    if(presetSave) presetSave.onclick = e => {
-        e.preventDefault();
-        e.stopPropagation();
-        savePromptNodeAsPreset(node);
-    };
     const presetEdit = el.querySelector('.prompt-preset-edit');
     if(presetEdit) presetEdit.onclick = e => {
         e.preventDefault();
@@ -3980,6 +4479,10 @@ function bindLoopNodeControls(el, node){
         btn.onclick = e => {
             e.preventDefault();
             e.stopPropagation();
+            if(smartCascadeRunning && smartCascadeActiveLoopId === (btn.dataset.loopRun || node.id)){
+                requestSmartCascadeStop();
+                return;
+            }
             runSmartCascadeFromLoop(btn.dataset.loopRun || node.id);
         };
     });
@@ -4494,7 +4997,7 @@ function deleteImage(id, imageIndex){
 function currentEditImage(){
     const node = nodes.find(n => n.id === cropState?.nodeId);
     const index = Number(cropState?.imageIndex || 0);
-    return {node, index, image:node?.images?.[index]};
+    return {node, index, image:imageForDisplay(node?.images?.[index])};
 }
 function cropImageDisplaySize(){
     const img = document.getElementById('cropImage');
@@ -4698,7 +5201,18 @@ function refreshComparePanel(){
         updatePreviewMetaHint();
     };
     currentImg.onload = onCurrentLoaded;
-    if(currentImg.getAttribute('src') !== curUrl) currentImg.src = curUrl;
+    currentImg.onerror = () => {
+        if(currentImg.dataset.proxyFallbackTried === '1') return;
+        const fallback = proxiedMediaUrl(editing.image || curUrl);
+        if(!fallback || fallback === currentImg.getAttribute('src')) return;
+        currentImg.dataset.proxyFallbackTried = '1';
+        currentImg.src = fallback;
+    };
+    const previewSrc = displayMediaUrl(editing.image || curUrl);
+    if(currentImg.getAttribute('src') !== previewSrc) {
+        currentImg.dataset.proxyFallbackTried = '';
+        currentImg.src = previewSrc;
+    }
     if(currentImg.complete && currentImg.naturalWidth) requestAnimationFrame(onCurrentLoaded);
     const sources = previewCompareSources();
     const hasSource = sources.length > 0;
@@ -5229,7 +5743,7 @@ function navigatePreviewImage(delta){
 }
 function openImageEditor(nodeId, imageIndex=0){
     const node = nodes.find(n => n.id === nodeId);
-    const image = node?.images?.[imageIndex];
+    const image = imageForDisplay(node?.images?.[imageIndex]);
     if(!image?.url) return;
     const kind = mediaKindForItem(image);
     if(kind !== 'image' && kind !== 'video'){
@@ -5270,8 +5784,16 @@ function openImageEditor(nodeId, imageIndex=0){
         updatePreviewMetaHint();
         syncImageEditOverflow(); refreshIcons();
     };
+    img.onerror = () => {
+        if(img.dataset.proxyFallbackTried === '1') return;
+        const fallback = proxiedMediaUrl(image);
+        if(!fallback || fallback === img.getAttribute('src')) return;
+        img.dataset.proxyFallbackTried = '1';
+        img.src = fallback;
+    };
+    img.dataset.proxyFallbackTried = '';
     img.crossOrigin = 'anonymous';
-    img.src = image.url;
+    img.src = displayMediaUrl(image);
     setImageEditMode('preview');
     updatePreviewNavButtons();
     refreshIcons();
@@ -5279,7 +5801,7 @@ function openImageEditor(nodeId, imageIndex=0){
 function closeImageEditor(){
     imageEditModal.classList.remove('open');
     const img = document.getElementById('cropImage');
-    img.onload = null; img.removeAttribute('src'); img.style.width = ''; img.style.height = ''; img.style.maxWidth = ''; img.style.maxHeight = '';
+    img.onload = null; img.onerror = null; img.removeAttribute('src'); delete img.dataset.proxyFallbackTried; img.style.width = ''; img.style.height = ''; img.style.maxWidth = ''; img.style.maxHeight = '';
     img.style.position = ''; img.style.left = ''; img.style.top = '';
     clearEditDrawing(true);
     cropState = null; cropDrag = null; editDrawState = null; resetEditDrawingHistory(); gridCustomDrag = null;
@@ -5457,16 +5979,19 @@ async function applyImageGridSplit(){
     const {node, image} = currentEditImage();
     const img = document.getElementById('cropImage');
     if(!node || !image || !img.naturalWidth || !img.naturalHeight) return;
-    const rects = gridSplitRects(img.naturalWidth, img.naturalHeight);
+    const rects = gridSplitRects(img.naturalWidth, img.naturalHeight).sort((a, b) => (Number(a.row || 0) - Number(b.row || 0)) || (Number(a.col || 0) - Number(b.col || 0)));
     if(!rects.length) return;
-    const base = (image.name || 'image').replace(/\.[^.]+$/, '');
+    const base = safeExportFileName((downloadNameForMediaItem(image, 'image') || 'image').replace(/\.[^.]+$/, ''), 'image');
+    const digits = String(rects.length).length;
     const blobs = [];
-    for(const rect of rects){
+    for(let i = 0; i < rects.length; i++){
+        const rect = rects[i];
         const canvasEl = document.createElement('canvas');
         canvasEl.width = rect.w; canvasEl.height = rect.h;
         canvasEl.getContext('2d').drawImage(img, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
         const blob = await new Promise(resolve => canvasEl.toBlob(resolve, 'image/png'));
-        if(blob) blobs.push({blob, name:`${base}_r${rect.row + 1}_c${rect.col + 1}.png`});
+        const order = String(i + 1).padStart(digits, '0');
+        if(blob) blobs.push({blob, name:`${base}_${order}_r${rect.row + 1}_c${rect.col + 1}.png`});
     }
     const files = await uploadImageBlobs(blobs);
     if(files.length){
@@ -6166,7 +6691,7 @@ function workflowInputNodesFor(node){
     return upstreamNodesForKinds(node, ['input', 'flow']);
 }
 function imagesForNode(node){
-    return (node?.images || []).map((img, index) => ({...img, nodeId:node.id, imageIndex:index}));
+    return (node?.images || []).map((img, index) => ({...imageForDisplay(img), nodeId:node.id, imageIndex:index}));
 }
 function nodeHasReferenceContent(node){
     return imagesForNode(node).some(img => img?.url);
@@ -6830,6 +7355,26 @@ function loopOutputSlotsForRoot(rootNode){
             return (Number(a.y) || 0) - (Number(b.y) || 0);
         });
 }
+function loopOutputSlotForRound(rootNode, loopNode, roundIndex, slotIndex){
+    if(!rootNode?.id) return null;
+    const candidates = loopOutputSlotsForRoot(rootNode)
+        .filter(node => node.sourceNodeId === rootNode.id)
+        .filter(node => !loopNode?.id || !node.loopSourceId || node.loopSourceId === loopNode.id);
+    const untagged = candidates.filter(node => !Number.isFinite(Number(node.loopRoundIndex)) && !Number.isFinite(Number(node.loopSlotIndex)));
+    return candidates.find(node => Number(node.loopRoundIndex) === Number(roundIndex))
+        || candidates.find(node => Number(node.loopSlotIndex) === Number(slotIndex))
+        || untagged[Math.max(0, Number(slotIndex) || 0)]
+        || null;
+}
+function tagLoopOutputSlot(output, rootNode, loopNode, roundIndex, slotIndex){
+    if(!output) return output;
+    output.sourceNodeId = rootNode?.id || output.sourceNodeId || '';
+    output.loopSourceId = loopNode?.id || output.loopSourceId || '';
+    output.loopRootId = rootNode?.id || output.loopRootId || '';
+    output.loopRoundIndex = Number(roundIndex) || 0;
+    output.loopSlotIndex = Math.max(0, Number(slotIndex) || 0);
+    return output;
+}
 function createLoopOutputSlot(rootNode, roundIndex, roundOffset=0, options={}){
     const rootRect = nodeRect(rootNode);
     const output = cloneSmartNode(rootNode, 0, 0);
@@ -6858,6 +7403,7 @@ function createLoopOutputSlot(rootNode, roundIndex, roundOffset=0, options={}){
     delete output.runInputRefs;
     delete output.runFinishedAt;
     delete output.runElapsedMs;
+    tagLoopOutputSlot(output, rootNode, options.loopNode || null, roundIndex, options.slotIndex ?? roundOffset);
     const slots = loopOutputSlotsForRoot(rootNode).map(nodeRect);
     let y = (Number(rootNode.y) || 0) + roundOffset * ((Number(rootRect.height) || 180) + 28);
     slots.forEach(rect => {
@@ -6947,6 +7493,69 @@ function restoreSourceVisualState(node, state){
         else node[key] = state[key];
     });
 }
+function finishLoopTargetPreviewState(node){
+    if(!node) return;
+    node.pending = 0;
+    node.running = false;
+    node.queued = false;
+    delete node.pendingTasks;
+    node.runFinishedAt = nowMs();
+    if(!node.runStartedAt) node.runStartedAt = node.runFinishedAt;
+    node.runElapsedMs = Math.max(0, node.runFinishedAt - Number(node.runStartedAt || node.runFinishedAt));
+    node.runTimerHidden = false;
+    if((node.images || []).some(img => img?.url)){
+        node.title = node.images.length > 1 ? 'Group' : 'Image';
+        node.scale = node.images.length > 1 ? MEDIA_GROUP_DEFAULT_SCALE : MEDIA_NODE_DEFAULT_SCALE;
+        node.outputKind = mediaKindForUrls(node.images || [], (node.images || []).some(isVideoMediaItem) ? 'video' : 'image');
+        delete node.w;
+        delete node.h;
+    }
+}
+function refsForDirectLoopRound(loopNode, loopIndex, total){
+    if(!loopNode?.imageInput) return [];
+    return outputImagesForNode(loopNode, true, {index:loopIndex, total, nodeId:loopNode.id})
+        .filter(ref => ref?.url)
+        .map((ref, index) => ({
+            ...ref,
+            role:ref.role || `image_${index + 1}`,
+            name:ref.name || trf('canvas.loopImageLabel', {n:loopIndex + index})
+        }));
+}
+function showDirectLoopRoundPreview(loopNode, target, refs, loopIndex, total){
+    if(!loopNode?.imageInput || !isSmartImageNode(target)) return false;
+    const cleanRefs = (refs || []).filter(ref => ref?.url);
+    if(!cleanRefs.length) return false;
+    const preview = cleanRefs.map((ref, index) => stripImageGenerationMeta({
+        url:ref.url || '',
+        name:ref.name || trf('canvas.loopImageLabel', {n:loopIndex + index}),
+        kind:ref.kind || (isVideoMediaItem(ref) ? 'video' : 'image'),
+        nodeId:ref.nodeId || '',
+        imageIndex:ref.imageIndex ?? '',
+        loopInputPreview:true
+    })).filter(ref => ref.url);
+    if(!preview.length) return false;
+    target.images = preview;
+    target.pending = 0;
+    target.running = true;
+    target.runStartedAt = nowMs();
+    delete target.runFinishedAt;
+    delete target.runElapsedMs;
+    target.runTimerHidden = false;
+    target.runInputRefs = cleanRefs.map(ref => ({
+        url:ref.url || '',
+        name:ref.name || '',
+        nodeId:ref.nodeId || '',
+        imageIndex:ref.imageIndex ?? '',
+        kind:ref.kind || ''
+    })).filter(ref => ref.url);
+    target.outputKind = mediaKindForUrls(preview, preview.some(isVideoMediaItem) ? 'video' : 'image');
+    target.scale = preview.length > 1 ? MEDIA_GROUP_DEFAULT_SCALE : MEDIA_NODE_DEFAULT_SCALE;
+    target.title = total > 1 ? `Image ${loopIndex}/${total}` : (target.title || 'Image');
+    delete target.w;
+    delete target.h;
+    render();
+    return true;
+}
 function directImageInputsFor(node){
     const upstream = smartImageUsesWorkflowInput(node) ? workflowInputNodesFor(node) : inputNodesFor(node);
     return upstream
@@ -6982,6 +7591,15 @@ function primaryImageInputFor(node, options={}){
 }
 function hasDownstreamImageNode(node){
     return downstreamNodesForId(node?.id).some(n => isSmartImageNode(n) && !isHistoryGroupNode(n));
+}
+function isGeneratedOutputForNode(sourceNode, targetNode){
+    return Boolean(sourceNode?.id && targetNode?.sourceNodeId === sourceNode.id);
+}
+function downstreamWorkflowImageTargetsFor(node){
+    return downstreamImageTargetsFor(node).filter(target => !isGeneratedOutputForNode(node, target));
+}
+function hasDownstreamWorkflowImageNode(node){
+    return downstreamWorkflowImageTargetsFor(node).length > 0;
 }
 function smartImageChainTo(nodeId, options={}){
     const tail = nodes.find(n => n.id === nodeId);
@@ -7068,6 +7686,11 @@ function downstreamCascadeTargetsFor(node){
             return (Number(a.y) || 0) - (Number(b.y) || 0);
         });
 }
+function directLoopRunTargets(loop){
+    if(!loop?.id) return [];
+    return downstreamImageTargetsFor(loop)
+        .filter(node => !hasDownstreamWorkflowImageNode(node));
+}
 function smartCascadeGraphForTail(tail){
     const path = smartImageChainTo(tail?.id, {includeFlow:true}).filter(n => isSmartImageNode(n) && !isHistoryGroupNode(n));
     if(!path.length) return {root:null, path:[], edges:[], children:new Map()};
@@ -7098,6 +7721,9 @@ function smartCascadeGraphForTail(tail){
     return {root, path, edges, children};
 }
 function cascadeTailForLoop(loopId){
+    const loop = nodes.find(n => n.id === loopId && n.type === 'smart-loop');
+    const directTargets = directLoopRunTargets(loop);
+    if(directTargets.length) return directTargets[directTargets.length - 1];
     const directImages = downstreamImageTargetsFor({id:loopId});
     const directIds = new Set(directImages.map(n => n.id));
     const candidates = downstreamNodesForId(loopId)
@@ -7115,10 +7741,19 @@ function cascadeTailForLoop(loopId){
     })[0];
 }
 function canRunSmartCascade(node){
-    if(!isSmartImageNode(node) || isHistoryGroupNode(node) || hasDownstreamImageNode(node)) return false;
+    if(!isSmartImageNode(node) || isHistoryGroupNode(node)) return false;
     const graph = smartCascadeGraphForTail(node);
+    const loop = resolveSmartCascadeLoop(node.id);
+    if(loop && isDirectLoopTargetRun(loop, node, graph)) return true;
+    if(hasDownstreamImageNode(node)) return false;
     if(graph.edges.length) return true;
-    return Boolean(resolveSmartCascadeLoop(node.id));
+    return Boolean(loop);
+}
+function isDirectLoopTargetRun(loop, tail, graph){
+    if(!loop?.node?.id || !tail?.id) return false;
+    if(graph?.root?.id !== tail.id) return false;
+    if(hasDownstreamWorkflowImageNode(tail)) return false;
+    return downstreamImageTargetsFor(loop.node).some(node => node.id === tail.id);
 }
 function cascadeConnectionKeys(){
     const keys = new Set();
@@ -7325,7 +7960,13 @@ function syncCascadeRunButton(node=selectedNode()){
     if(!cascadeRunBtn) return;
     const visible = canRunSmartCascade(node);
     cascadeRunBtn.style.display = visible ? 'inline-flex' : 'none';
-    cascadeRunBtn.disabled = !visible || smartCascadeRunning || Boolean(node?.running);
+    const runningForNode = Boolean(smartCascadeRunning && smartCascadeActiveLoopId && resolveSmartCascadeLoop(node?.id)?.node?.id === smartCascadeActiveLoopId);
+    cascadeRunBtn.disabled = !visible || (!runningForNode && Boolean(node?.running)) || (smartCascadeRunning && (!runningForNode || smartCascadeStopRequested));
+    cascadeRunBtn.classList.toggle('is-stop', runningForNode);
+    cascadeRunBtn.innerHTML = runningForNode
+        ? `<i data-lucide="square"></i><span>${escapeHtml(smartCascadeStopText(smartCascadeStopRequested))}</span>`
+        : `<i data-lucide="workflow"></i><span>${escapeHtml(tr('smart.loopRunAll'))}</span>`;
+    refreshIcons();
 }
 function loadNodePromptDraftToInput(node){
     if(node?.promptDraftHtml) {
@@ -7725,6 +8366,23 @@ function cascadeRefsFromOutputs(outputs, targetNode){
         imageIndex:targetNode ? (targetNode.images || []).length - outputs.length + index : index
     }));
 }
+function smartCascadeStopText(stopping=false){
+    return stopping ? '停止中...' : '停止运行';
+}
+function smartCascadeAbortError(){
+    const err = new Error('已停止一键运行');
+    err.smartCascadeStopped = true;
+    return err;
+}
+function throwIfSmartCascadeStopRequested(){
+    if(smartCascadeStopRequested) throw smartCascadeAbortError();
+}
+function requestSmartCascadeStop(){
+    if(!smartCascadeRunning || smartCascadeStopRequested) return;
+    smartCascadeStopRequested = true;
+    toast('已请求停止，当前任务完成后停止');
+    render();
+}
 function smartCascadeParallelLimit(chain=[]){
     const hasComfy = (chain || []).some(node => smartSettingsForNode(node)?.engine === 'comfy');
     return hasComfy ? Math.max(1, Math.min(6, Number(comfyInstanceCount) || 1)) : 6;
@@ -7734,9 +8392,15 @@ async function runSmartCascadeRoundsWithLimit(roundIndexes, limit, runner){
     const workerCount = Math.max(1, Math.min(Number(limit) || 1, roundIndexes.length));
     const workers = Array.from({length:workerCount}, async () => {
         while(next < roundIndexes.length){
+            if(smartCascadeStopRequested) break;
             const roundOffset = next++;
             const current = roundIndexes[roundOffset];
-            await runner(current, roundOffset);
+            try {
+                await runner(current, roundOffset);
+            } catch(e) {
+                if(e?.smartCascadeStopped) break;
+                throw e;
+            }
         }
     });
     await Promise.all(workers);
@@ -7744,37 +8408,46 @@ async function runSmartCascadeRoundsWithLimit(roundIndexes, limit, runner){
 async function runSmartCascade(targetNode=null){
     const tail = targetNode || selectedNode();
     if(!canRunSmartCascade(tail)){ toast('请选择链路结尾图片节点'); return; }
-    if(smartCascadeRunning) return;
+    if(smartCascadeRunning){ requestSmartCascadeStop(); return; }
     savePromptDraftForCurrent();
     const graph = smartCascadeGraphForTail(tail);
     const chain = graph.path;
     const loop = resolveSmartCascadeLoop(tail.id);
-    const singleNodeLoopRun = Boolean(loop && chain.length === 1);
+    const directLoopTargetRun = Boolean(loop && isDirectLoopTargetRun(loop, tail, graph));
+    const singleNodeLoopRun = Boolean(loop && (chain.length === 1 || directLoopTargetRun));
     if(!graph.edges.length && !singleNodeLoopRun){ toast(tr('smart.loopNoChain')); return; }
     const originalSelected = selectedId;
     const originalSettings = cloneSmartSettings(settings);
     const originalPromptHtml = promptInput.innerHTML;
     smartCascadeRunning = true;
     smartCascadeActiveLoopId = loop?.node?.id || '';
+    smartCascadeStopRequested = false;
     smartCascadeSilentSelection = true;
     runBtn.disabled = true;
-    cascadeRunBtn.disabled = true;
+    cascadeRunBtn.disabled = false;
     pushUndo();
     const totalRounds = loop?.count || 1;
     const startIndex = Math.max(1, Number(loop?.node?.loopStart) || 1);
     const batchSize = loop?.node?.imageInput ? Math.max(1, Math.min(100, Number(loop.node.imageBatchSize) || 1)) : 1;
     const endIndex = startIndex + (totalRounds - 1) * batchSize;
     const loopMode = loop?.mode === 'parallel' ? 'parallel' : 'serial';
-    const parallelLimit = loopMode === 'parallel' && totalRounds > 1 ? smartCascadeParallelLimit(chain) : 1;
+    const parallelLimit = loopMode === 'parallel' && totalRounds > 1 ? (directLoopTargetRun ? 1 : smartCascadeParallelLimit(chain)) : 1;
     const precreateSingleSlots = singleNodeLoopRun && loopMode === 'parallel' && totalRounds > 1 && parallelLimit > 1;
     let singleLoopSlots = [];
     if(singleNodeLoopRun) smartCascadeRunPath = {states:{}};
     if(singleNodeLoopRun){
-        singleLoopSlots = loopOutputSlotsForRoot(tail).slice(0, totalRounds);
-        singleLoopSlots.forEach(slot => { smartCascadeRunPath.states[`${tail.id}->${slot.id}`] = 'wait'; });
-        while(precreateSingleSlots && singleLoopSlots.length < totalRounds){
-            const slotOffset = singleLoopSlots.length;
-            singleLoopSlots.push(createLoopOutputSlot(tail, startIndex + slotOffset * batchSize, slotOffset, {queued:true}));
+        singleLoopSlots = Array.from({length:totalRounds}, (_, round) => {
+            const loopIndex = startIndex + round * batchSize;
+            const slot = loopOutputSlotForRound(tail, loop.node, loopIndex, round);
+            return slot ? tagLoopOutputSlot(slot, tail, loop.node, loopIndex, round) : null;
+        });
+        singleLoopSlots.filter(Boolean).forEach(slot => { smartCascadeRunPath.states[`${tail.id}->${slot.id}`] = 'wait'; });
+        if(precreateSingleSlots){
+            for(let slotOffset = 0; slotOffset < totalRounds; slotOffset++){
+                if(singleLoopSlots[slotOffset]) continue;
+                const loopIndex = startIndex + slotOffset * batchSize;
+                singleLoopSlots[slotOffset] = createLoopOutputSlot(tail, loopIndex, slotOffset, {queued:true, loopNode:loop.node, slotIndex:slotOffset});
+            }
         }
         render();
     }
@@ -7788,17 +8461,27 @@ async function runSmartCascade(targetNode=null){
     }
     try {
         const runRound = async (loopIndex=startIndex, options={}) => {
-            const ctx = loop ? {index:loopIndex, total:endIndex, nodeId:loop.node.id, forceWorkflow:chain.length > 1} : null;
+            throwIfSmartCascadeStopRequested();
+            const ctx = loop ? {index:loopIndex, total:endIndex, nodeId:loop.node.id, forceWorkflow:chain.length > 1 && !singleNodeLoopRun} : null;
             smartLoopContext = ctx;
             if(singleNodeLoopRun){
+                const refs = refsForDirectLoopRound(loop.node, loopIndex, endIndex);
+                if(directLoopTargetRun) showDirectLoopRoundPreview(loop.node, tail, refs, loopIndex, endIndex);
                 const slotIndex = Math.max(0, Math.floor((loopIndex - startIndex) / batchSize));
-                const outputTarget = options.outputTarget || singleLoopSlots[slotIndex] || createLoopOutputSlot(tail, loopIndex, slotIndex);
-                if(!singleLoopSlots[slotIndex]) singleLoopSlots[slotIndex] = outputTarget;
+                const outputTarget = tagLoopOutputSlot(
+                    options.outputTarget || singleLoopSlots[slotIndex] || loopOutputSlotForRound(tail, loop.node, loopIndex, slotIndex) || createLoopOutputSlot(tail, loopIndex, slotIndex, {loopNode:loop.node, slotIndex}),
+                    tail,
+                    loop.node,
+                    loopIndex,
+                    slotIndex
+                );
+                singleLoopSlots[slotIndex] = outputTarget;
                 await runLoopRoundIntoSlot(loop.node, tail, outputTarget, loopIndex, ctx);
                 return;
             }
             const producedRefs = new Map();
             const runBranch = async (source, incomingRefs=[]) => {
+                throwIfSmartCascadeStopRequested();
                 let targets = graph.children.get(source.id) || [];
                 const loopPrompts = isSmartImageNode(source) ? upstreamLoopPromptNodesFor(source) : [];
                 const sourceLoopPrompts = isSmartImageNode(source) ? relayLoopPromptNodesForTarget(source) : [];
@@ -7821,6 +8504,7 @@ async function runSmartCascade(targetNode=null){
                 }
                 let sharedRefs = incomingRefs;
                 for(let index = 0; index < targets.length; index++){
+                    throwIfSmartCascadeStopRequested();
                     const target = targets[index];
                     const edgeKey = `${source.id}->${target.id}`;
                     let outputs = [];
@@ -7866,6 +8550,7 @@ async function runSmartCascade(targetNode=null){
                     }
                     const refs = target.type === 'smart-loop' ? sharedRefs : (index === 0 ? sharedRefs : cascadeRefsFromOutputs(outputs, target));
                     producedRefs.set(target.id, refs);
+                    throwIfSmartCascadeStopRequested();
                     await runBranch(target, refs);
                 }
             };
@@ -7884,8 +8569,12 @@ async function runSmartCascade(targetNode=null){
                 return runRound(loopIndex, {outputTarget});
             });
         } else {
-            for(const loopIndex of roundIndexes) await runRound(loopIndex);
+            for(const loopIndex of roundIndexes){
+                throwIfSmartCascadeStopRequested();
+                await runRound(loopIndex);
+            }
         }
+        throwIfSmartCascadeStopRequested();
         smartLoopContext = null;
         selectedId = '';
         selectedIds = [];
@@ -7904,14 +8593,16 @@ async function runSmartCascade(targetNode=null){
         selectedId = originalSelected;
         settings = originalSettings;
         promptInput.innerHTML = originalPromptHtml;
-        toast((e.message || tr('smart.errRunFailed')).slice(0, 160));
+        toast(e?.smartCascadeStopped ? '已停止一键运行' : (e.message || tr('smart.errRunFailed')).slice(0, 160));
     } finally {
         smartCascadeRunning = false;
         smartCascadeActiveLoopId = '';
+        smartCascadeStopRequested = false;
         smartCascadeSilentSelection = false;
         smartCascadeRunPath = null;
         runBtn.disabled = false;
         cascadeRunBtn.disabled = false;
+        if(directLoopTargetRun) finishLoopTargetPreviewState(tail);
         scheduleSave();
         render();
     }
@@ -7959,7 +8650,7 @@ async function runGeneration(){
         : settings.engine === 'comfy'
         ? (settings.comfyMode === 'text' || settings.comfyMode === 'enhance' || settings.comfyMode === 'edit' || settings.comfyMode === 'custom' ? 1 : 1)
         : Math.max(1, Math.min(8, Number(settings.count || 1)));
-    const apiConcurrentRun = settings.engine === 'api' || settings.engine === 'runninghub';
+    const apiConcurrentRun = settings.engine === 'api' || settings.engine === 'runninghub' || settings.engine === 'modelscope';
     const nodeHasImages = (node.images || []).some(img => img?.url);
     const workflowModeRun = smartImageUsesWorkflowInput(node, smartLoopContext);
     const sourceVisualState = nodeHasImages && !workflowModeRun ? {
@@ -8180,38 +8871,42 @@ async function runRunningHubGeneration(prompt, refs){
 }
 async function runApiVideoGeneration(prompt, refs){
     if(!settings.videoModel) throw new Error(tr('smart.errNoVideoModel'));
-    const uploadedRefs = applyUploadedUrlsToSmartRefs(refs);
-    const refImages = imageRefsOnly(uploadedRefs).map((ref, i) => {
-        const item = {url:ref.url, name:ref.name || `图${i + 1}`};
-        if(settings.videoUseFrameRoles){
-            if(i === 0) item.role = 'first_frame';
-            else if(i === 1) item.role = 'last_frame';
-        }
-        return item;
-    });
-    const manualVideo = manualSmartVideoLink()?.url || '';
-    let refVideos = manualVideo ? manualSmartMediaLinks().map(item => item.url).filter(Boolean) : videoRefsOnly(uploadedRefs).map(ref => ref.url);
-    const payload = {
-        prompt,
-        provider_id: settings.videoProvider || 'comfly',
-        model: settings.videoModel || 'veo3-fast',
-        duration: Math.max(1, Math.min(60, Number(settings.videoDuration) || 5)),
-        aspect_ratio: settings.videoAspect || '16:9',
-        resolution: settings.videoResolution || '',
-        images: refImages,
-        videos: refVideos,
-        enhance_prompt: Boolean(settings.videoEnhancePrompt),
-        enable_upsample: Boolean(settings.videoEnableUpsample),
-        watermark: Boolean(settings.videoWatermark),
-        camerafixed: Boolean(settings.videoCameraFixed),
-        generate_audio: Boolean(settings.videoGenerateAudio)
-    };
-    const result = await fetch('/api/canvas-video', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
-    }).then(async r => { if(!r.ok) throw new Error(await smartResponseErrorMessage(r, tr('smart.errRunFailed'))); return r.json(); });
-    return resultMediaUrls(result);
+    try {
+        const uploadedRefs = applyUploadedUrlsToSmartRefs(refs);
+        const refImages = imageRefsOnly(uploadedRefs).map((ref, i) => {
+            const item = {url:ref.url, name:ref.name || `图${i + 1}`};
+            if(settings.videoUseFrameRoles){
+                if(i === 0) item.role = 'first_frame';
+                else if(i === 1) item.role = 'last_frame';
+            }
+            return item;
+        });
+        const manualVideo = manualSmartVideoLink()?.url || '';
+        const refVideos = manualVideo ? manualSmartMediaLinks().map(item => item.url).filter(Boolean) : videoRefsOnly(uploadedRefs).map(ref => ref.url);
+        const payload = {
+            prompt,
+            provider_id: settings.videoProvider || 'comfly',
+            model: settings.videoModel || 'veo3-fast',
+            duration: Math.max(1, Math.min(60, Number(settings.videoDuration) || 5)),
+            aspect_ratio: settings.videoAspect || '16:9',
+            resolution: settings.videoResolution || '',
+            images: refImages,
+            videos: refVideos,
+            enhance_prompt: Boolean(settings.videoEnhancePrompt),
+            enable_upsample: Boolean(settings.videoEnableUpsample),
+            watermark: Boolean(settings.videoWatermark),
+            camerafixed: Boolean(settings.videoCameraFixed),
+            generate_audio: Boolean(settings.videoGenerateAudio)
+        };
+        const result = await fetch('/api/canvas-video', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(payload)
+        }).then(async r => { if(!r.ok) throw new Error(await smartResponseErrorMessage(r, tr('smart.errRunFailed'))); return r.json(); });
+        return resultMediaUrls(result);
+    } finally {
+        transientSmartCloudLinks = [];
+    }
 }
 async function runModelscopeGeneration(prompt, refs){
     refs = imageRefsOnly(refs);
@@ -9120,7 +9815,13 @@ if(promptResize){
     });
 }
 runBtn.onclick = runGeneration;
-cascadeRunBtn.onclick = runSmartCascade;
+cascadeRunBtn.onclick = () => {
+    if(smartCascadeRunning) {
+        requestSmartCascadeStop();
+        return;
+    }
+    runSmartCascade();
+};
 fileInput.onchange = () => {
     const groupPoint = pendingGroupUploadPoint;
     if(!fileInput.files?.length){
@@ -9146,7 +9847,64 @@ assetDialogBackdrop.addEventListener('click', e => e.stopPropagation());
 promptPresetPanel?.addEventListener('pointerdown', e => e.stopPropagation());
 promptPresetPanel?.addEventListener('mousedown', e => e.stopPropagation());
 promptPresetPanel?.addEventListener('click', e => e.stopPropagation());
+promptTemplatePanel?.addEventListener('pointerdown', e => e.stopPropagation());
+promptTemplatePanel?.addEventListener('mousedown', e => e.stopPropagation());
+promptTemplatePanel?.addEventListener('wheel', e => e.stopPropagation(), {passive:false});
+promptTemplatePanel?.addEventListener('click', e => {
+    e.stopPropagation();
+    const cat = e.target.closest('[data-template-cat]');
+    if(cat){
+        promptTemplateCategory = cat.dataset.templateCat || 'all';
+        promptTemplateSelectedId = '';
+        promptTemplateEditing = false;
+        renderPromptTemplatePanel({preserveScroll:false});
+        return;
+    }
+    const catEdit = e.target.closest('[data-template-cat-edit]');
+    if(catEdit){
+        const id = catEdit.dataset.templateCatEdit || '';
+        renamePromptTemplateGroup(id);
+        return;
+    }
+    const catDelete = e.target.closest('[data-template-cat-delete]');
+    if(catDelete){
+        deletePromptTemplateGroup(catDelete.dataset.templateCatDelete || '');
+        return;
+    }
+    if(e.target.closest('[data-template-group-edit]')){
+        promptTemplateGroupEditMode = !promptTemplateGroupEditMode;
+        renderPromptTemplatePanel({preserveScroll:false});
+        return;
+    }
+    if(e.target.closest('[data-template-cat-new]')) { createPromptTemplateGroup(); return; }
+    const card = e.target.closest('[data-template-id]');
+    if(card){
+        promptTemplateSelectedId = card.dataset.templateId || '';
+        promptTemplateEditing = false;
+        renderPromptTemplatePanel();
+        return;
+    }
+    const apply = e.target.closest('[data-template-apply]');
+    if(apply) applyPromptTemplateToNode(apply.dataset.templateApply || 'positive');
+    if(e.target.closest('[data-template-save-current]')) saveCurrentPromptAsTemplate();
+    if(e.target.closest('[data-template-new]')) createBlankPromptTemplate();
+    if(e.target.closest('[data-template-edit]')) { promptTemplateEditing = true; renderPromptTemplatePanel(); }
+    if(e.target.closest('[data-template-edit-cancel]')) { promptTemplateEditing = false; renderPromptTemplatePanel(); }
+    if(e.target.closest('[data-template-edit-save]')) savePromptTemplateEdit();
+    if(e.target.closest('[data-template-delete]')) deletePromptTemplate();
+});
 if(promptPresetClose) promptPresetClose.onclick = closePromptPresetPanel;
+if(promptTemplateClose) promptTemplateClose.onclick = closePromptTemplatePanel;
+if(promptTemplateSearch) promptTemplateSearch.oninput = () => renderPromptTemplatePanel({preserveScroll:false});
+if(composerTemplateBtn) composerTemplateBtn.onclick = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    if(promptTemplatePanel?.classList?.contains('open') && promptTemplatePanel.dataset.target === 'composer'){
+        closePromptTemplatePanel();
+        return;
+    }
+    openPromptTemplatePanel(activeComposerNode()?.id || selectedNode()?.id || '', promptTemplateSelectedId, {target:'composer'});
+};
 if(promptPresetSelect) promptPresetSelect.onchange = () => renderPromptPresetPanel(promptPresetSelect.value);
 [promptPresetName, promptPresetText].forEach(input => {
     input?.addEventListener('input', () => {
@@ -9354,9 +10112,10 @@ document.addEventListener('click', event => {
     if(!event.target.closest('.smart-control')) closeAllSmartPopovers();
     if(!event.target.closest('.mention-picker') && !event.target.closest('#promptInput')) closeMentionPicker();
     if(!event.target.closest('.prompt-preset-panel') && !event.target.closest('.prompt-preset-edit') && !event.target.closest('.prompt-preset-save')) closePromptPresetPanel();
+    if(!event.target.closest('.prompt-template-panel') && !event.target.closest('.prompt-preset-edit') && !event.target.closest('#composerTemplateBtn')) closePromptTemplatePanel();
 });
 document.addEventListener('keydown', event => {
-    if(event.key === 'Escape') { closeAllSmartPopovers(); closeCreateMenu(); closeSmartCanvasLog(); closeSmartCanvasShortcuts(); closePromptPresetPanel(); }
+    if(event.key === 'Escape') { closeAllSmartPopovers(); closeCreateMenu(); closeSmartCanvasLog(); closeSmartCanvasShortcuts(); closePromptPresetPanel(); closePromptTemplatePanel(); }
 });
 document.getElementById('cropBox').addEventListener('mousedown', event => beginCropDrag(event, 'move'));
 document.getElementById('cropHandle').addEventListener('mousedown', event => beginCropDrag(event, 'resize'));
@@ -9530,6 +10289,9 @@ window.addEventListener('studio-lang-change', () => {
 window.onload = async () => {
     applyTheme(localStorage.getItem('studio_theme') || localStorage.getItem('canvas_theme') || 'light');
     loadPromptPresets();
+    loadPromptTemplateGroups();
+    loadPromptTemplateOverrides();
+    await loadPromptTemplates();
     if(window.StudioI18n) window.StudioI18n.apply();
     if(window.lucide) lucide.createIcons();
     await loadConfig();

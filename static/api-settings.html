@@ -15,12 +15,12 @@
             } catch(e) {}
         })();
     </script>
-    <script src="/static/vendor/js/tailwindcss-cdn.js?v=2026.05.28"></script>
-    <script src="/static/vendor/js/lucide.js?v=2026.05.28"></script>
-    <script src="/static/js/theme.js?v=2026.05.28"></script>
-    <script src="/static/js/i18n.js?v=2026.05.28"></script>
-    <link rel="stylesheet" href="/static/css/theme.css?v=2026.05.28">
-    <link rel="stylesheet" href="/static/css/api-settings.css?v=2026.05.28">
+    <script src="/static/vendor/js/tailwindcss-cdn.js?v=2026.05.28.1"></script>
+    <script src="/static/vendor/js/lucide.js?v=2026.05.28.1"></script>
+    <script src="/static/js/theme.js?v=2026.05.28.1"></script>
+    <script src="/static/js/i18n.js?v=2026.05.28.1"></script>
+    <link rel="stylesheet" href="/static/css/theme.css?v=2026.05.28.1">
+    <link rel="stylesheet" href="/static/css/api-settings.css?v=2026.05.28.1">
 </head>
 <body>
     <div class="page">
@@ -86,8 +86,8 @@
                                     <div class="key-input-line">
                                         <div class="field-frame"><input id="keyInput" type="password"></div>
                                         <div class="key-actions">
-                                            <button class="key-btn" type="button" onclick="saveKeyOnly()" title="保存 Key"><i data-lucide="check" class="w-4 h-4"></i></button>
-                                            <button class="key-btn key-clear" type="button" onclick="clearKeyOnly()" title="清除 Key"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                            <button class="key-btn" type="button" onclick="saveKeyOnly()" title="保存 Key" data-i18n-title="api.saveKeyTitle"><i data-lucide="check" class="w-4 h-4"></i></button>
+                                            <button class="key-btn key-clear" type="button" onclick="clearKeyOnly()" title="清除 Key" data-i18n-title="api.clearKeyTitle"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                                         </div>
                                     </div>
                                 </div>
@@ -96,20 +96,20 @@
                                     <div class="rh-key-item">
                                         <div class="rh-key-head">
                                             <div>
-                                                <div class="rh-key-title">RH币 API Key</div>
-                                                <div class="rh-key-desc">使用 RH币 接口时填写</div>
+                                                <div class="rh-key-title" data-i18n="api.rhCoinApiKeyRequired">RH币 API Key · 必填</div>
+                                                <div class="rh-key-desc" data-i18n="api.rhCoinKeyDesc">使用 RH币 接口时填写</div>
                                             </div>
                                             <div class="rh-key-links">
-                                                <span>获取</span>
-                                                <a href="https://www.runninghub.cn/enterprise-api/consumerApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span>国内 Key</span></a>
-                                                <a href="https://www.runninghub.ai/enterprise-api/consumerApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span>国外 Key</span></a>
+                                                <span data-i18n="api.get">获取</span>
+                                                <a href="https://www.runninghub.cn/enterprise-api/consumerApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span data-i18n="api.cnKey">国内 Key</span></a>
+                                                <a href="https://www.runninghub.ai/enterprise-api/consumerApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span data-i18n="api.globalKey">国外 Key</span></a>
                                             </div>
                                         </div>
                                         <div class="key-input-line">
                                             <div class="field-frame"><input id="rhFreeKeyInput" type="password"></div>
                                             <div class="key-actions">
-                                                <button class="key-btn" type="button" onclick="saveRhKeyOnly('free')" title="保存 RH币 Key"><i data-lucide="check" class="w-4 h-4"></i></button>
-                                                <button class="key-btn key-clear" type="button" onclick="clearRhKeyOnly('free')" title="清除 RH币 Key"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                                <button class="key-btn" type="button" onclick="saveRhKeyOnly('free')" title="保存 RH币 Key" data-i18n-title="api.saveRhCoinKeyTitle"><i data-lucide="check" class="w-4 h-4"></i></button>
+                                                <button class="key-btn key-clear" type="button" onclick="clearRhKeyOnly('free')" title="清除 RH币 Key" data-i18n-title="api.clearRhCoinKeyTitle"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                                             </div>
                                         </div>
                                         <span id="rhFreeKeyHint" class="hint"></span>
@@ -117,20 +117,20 @@
                                     <div class="rh-key-item">
                                         <div class="rh-key-head">
                                             <div>
-                                                <div class="rh-key-title">账户余额 API Key</div>
-                                                <div class="rh-key-desc">使用账户余额接口时填写</div>
+                                                <div class="rh-key-title" data-i18n="api.rhWalletApiKeyOptional">账户余额 API Key · 可选</div>
+                                                <div class="rh-key-desc" data-i18n="api.rhWalletKeyDesc">使用账户余额接口时填写</div>
                                             </div>
                                             <div class="rh-key-links">
-                                                <span>获取</span>
-                                                <a href="https://www.runninghub.cn/enterprise-api/sharedApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span>国内 Key</span></a>
-                                                <a href="https://www.runninghub.ai/enterprise-api/sharedApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span>国外 Key</span></a>
+                                                <span data-i18n="api.get">获取</span>
+                                                <a href="https://www.runninghub.cn/enterprise-api/sharedApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span data-i18n="api.cnKey">国内 Key</span></a>
+                                                <a href="https://www.runninghub.ai/enterprise-api/sharedApi?inviteCode=rh-v1331" target="_blank" rel="noopener"><i data-lucide="external-link" class="w-3 h-3"></i><span data-i18n="api.globalKey">国外 Key</span></a>
                                             </div>
                                         </div>
                                         <div class="key-input-line">
                                             <div class="field-frame"><input id="rhWalletKeyInput" type="password"></div>
                                             <div class="key-actions">
-                                                <button class="key-btn" type="button" onclick="saveRhKeyOnly('wallet')" title="保存账户余额 Key"><i data-lucide="check" class="w-4 h-4"></i></button>
-                                                <button class="key-btn key-clear" type="button" onclick="clearRhKeyOnly('wallet')" title="清除账户余额 Key"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                                <button class="key-btn" type="button" onclick="saveRhKeyOnly('wallet')" title="保存账户余额 Key" data-i18n-title="api.saveRhWalletKeyTitle"><i data-lucide="check" class="w-4 h-4"></i></button>
+                                                <button class="key-btn key-clear" type="button" onclick="clearRhKeyOnly('wallet')" title="清除账户余额 Key" data-i18n-title="api.clearRhWalletKeyTitle"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                                             </div>
                                         </div>
                                         <span id="rhWalletKeyHint" class="hint"></span>
@@ -263,8 +263,8 @@
                 <main id="recommendContent" class="content recommend-content" hidden>
                     <div class="content-head">
                         <div>
-                            <div class="editor-title">推荐平台</div>
-                            <div class="editor-sub">获取 Key 后保存，右侧会切换到刚保存的平台配置。</div>
+                            <div class="editor-title" data-i18n="api.recommendPanelTitle">推荐平台</div>
+                            <div class="editor-sub" data-i18n="api.recommendPanelSub">获取 Key 后保存，右侧会切换到刚保存的平台配置。</div>
                         </div>
                     </div>
                     <section id="recommendPanel" class="provider-onboarding-card recommend-inline-card"></section>
@@ -362,6 +362,6 @@
         </div>
     </div>
 
-    <script src="/static/js/api-settings.js?v=2026.05.28"></script>
+    <script src="/static/js/api-settings.js?v=2026.05.28.1"></script>
 </body>
 </html>

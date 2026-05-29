@@ -16,10 +16,10 @@
             } catch(e) {}
         })();
     </script>
-    <script src="/static/vendor/js/lucide.js?v=2026.05.28"></script>
-    <script src="/static/js/theme.js?v=2026.05.28"></script>
-    <script src="/static/js/i18n.js?v=2026.05.28"></script>
-    <link rel="stylesheet" href="/static/css/smart-canvas.css?v=2026.05.28">
+    <script src="/static/vendor/js/lucide.js?v=2026.05.28.1"></script>
+    <script src="/static/js/theme.js?v=2026.05.28.1"></script>
+    <script src="/static/js/i18n.js?v=2026.05.28.1"></script>
+    <link rel="stylesheet" href="/static/css/smart-canvas.css?v=2026.05.28.1">
 </head>
 <body>
     <div id="shell" class="shell">
@@ -44,6 +44,9 @@
                     <div id="inputPromptPreview" class="input-prompt-preview"></div>
                     <div class="prompt-row">
                         <div id="promptInput" class="prompt-input" contenteditable="true" data-i18n-placeholder="smart.promptPlaceholder" data-placeholder="描述你想生成或编辑的图片..."></div>
+                        <button id="composerTemplateBtn" class="composer-template-btn" type="button" title="模板库" aria-label="模板库" data-i18n-title="smart.promptTemplateLibrary">
+                            <i data-lucide="library"></i><span data-i18n="smart.promptTemplateLibrary">模板库</span>
+                        </button>
                         <div id="mentionPicker" class="mention-picker"></div>
                         <div id="promptResize" class="prompt-resize" data-i18n-title="smart.promptResize" title="拖拽调整文本框高度"></div>
                     </div>
@@ -62,10 +65,10 @@
         <div id="createMenu" class="create-menu">
             <div class="create-menu-grid">
                 <button class="create-card" type="button" data-create-type="image">
-                    <span class="create-card-icon"><i data-lucide="image-plus"></i></span>
+                    <span class="create-card-icon"><i data-lucide="upload-cloud"></i></span>
                     <span>
-                        <div class="create-card-title">图片</div>
-                        <div class="create-card-sub">上传、编辑或生成图片</div>
+                        <div class="create-card-title">上传节点</div>
+                        <div class="create-card-sub">支持图片/音频/视频/批量上传</div>
                     </span>
                 </button>
                 <button class="create-card" type="button" data-create-type="prompt">
@@ -103,6 +106,21 @@
                 <button id="promptPresetNew" type="button">存为新预设</button>
                 <button id="promptPresetSave" class="primary" type="button">保存修改</button>
             </div>
+        </div>
+        <div id="promptTemplatePanel" class="prompt-template-panel">
+            <div class="prompt-template-head">
+                <div>
+                    <strong>提示词模板库</strong>
+                    <span>内置标准库 + 我的预设</span>
+                </div>
+                <button id="promptTemplateClose" type="button" title="关闭"><i data-lucide="x"></i></button>
+            </div>
+            <div class="prompt-template-search">
+                <i data-lucide="search"></i>
+                <input id="promptTemplateSearch" type="search" placeholder="搜索模板...">
+            </div>
+            <div id="promptTemplateCats" class="prompt-template-cats"></div>
+            <div id="promptTemplateBody" class="prompt-template-body"></div>
         </div>
         <div id="minimap" class="smart-minimap" aria-hidden="true">
             <div id="minimapContent" class="smart-minimap-content">
@@ -287,6 +305,6 @@
         <div id="toast" class="toast"></div>
         <div id="mentionPreview" class="mention-preview"><img alt="preview"></div>
     </div>
-    <script src="/static/js/smart-canvas.js?v=2026.05.28"></script>
+    <script src="/static/js/smart-canvas.js?v=2026.05.28.1"></script>
 </body>
 </html>

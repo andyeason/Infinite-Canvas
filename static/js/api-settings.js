@@ -53,22 +53,22 @@ const RH_DEFAULT_BASE_URL = 'https://www.runninghub.cn';
 const RH_DEFAULT_IMAGE_MODELS = ['/openapi/v2/text2image'];
 const ONBOARDING_GUIDES = {
     modelscope:{
-        title:'ModelScope 新手引导',
-        desc:'先获取 Token，填入 API Key 并保存后，右侧完整设置会自动显示。',
-        primaryLabel:'获取 Token · 国内',
-        secondaryLabel:'获取 Token · 国外',
+        titleKey:'api.msOnboardingTitle',
+        descKey:'api.msOnboardingDesc',
+        primaryLabelKey:'api.msGetTokenCn',
+        secondaryLabelKey:'api.msGetTokenGlobal',
         primaryUrl:'https://www.modelscope.cn/my/access/token',
         secondaryUrl:'https://www.modelscope.ai/my/access/token'
     },
     runninghub:{
-        title:'RunningHub 新手引导',
-        desc:'RH 有 RH币和账户余额两种 Key，RH币必填，账户余额可选。',
-        primaryLabel:'获取 Key · 国内',
-        secondaryLabel:'获取 Key · 国外',
+        titleKey:'api.rhOnboardingTitle',
+        descKey:'api.rhOnboardingDesc',
+        primaryLabelKey:'api.rhGetKeyCn',
+        secondaryLabelKey:'api.rhGetKeyGlobal',
         primaryUrl:'https://www.runninghub.cn/enterprise-api/consumerApi?inviteCode=rh-v1331',
         secondaryUrl:'https://www.runninghub.ai/enterprise-api/consumerApi?inviteCode=rh-v1331',
-        walletPrimaryLabel:'获取余额 Key · 国内',
-        walletSecondaryLabel:'获取余额 Key · 国外',
+        walletPrimaryLabelKey:'api.rhGetWalletKeyCn',
+        walletSecondaryLabelKey:'api.rhGetWalletKeyGlobal',
         walletPrimaryUrl:'https://www.runninghub.cn/enterprise-api/sharedApi?inviteCode=rh-v1331',
         walletSecondaryUrl:'https://www.runninghub.ai/enterprise-api/sharedApi?inviteCode=rh-v1331'
     }
@@ -83,9 +83,9 @@ const RECOMMENDED_APIS = [
         base_url:'https://api.apimart.ai',
         protocol:'apimart',
         register_url:'https://apimart.ai/zh/register?aff=1uyAbb',
-        tags:['图像模型','视频模型','LLM模型'],
+        tagKeys:['api.tagImageModels','api.tagVideoModels','api.tagLlmModels'],
         icons:['IMG','VID','LLM'],
-        summary:'聚合多类型生成模型，适合希望用一套配置快速接入图像、视频和 LLM 的用户。',
+        summaryKey:'api.recommendApimartSummary',
         advantages:['模型类型覆盖广', '适合多节点混合工作流', '异步协议适合长任务']
     },
     {
@@ -93,15 +93,22 @@ const RECOMMENDED_APIS = [
         base_url:'https://www.fhl.mom',
         protocol:'openai',
         register_url:'https://www.fhl.mom/register?aff=86L574B4T2N9',
-        tags:['Codex','GPT image 2模型'],
+        tagKeys:['Codex','api.tagGptImage2'],
         icons:['CODEX','GPT','IMG'],
-        summary:'偏向 OpenAI 兼容体验，适合需要 Codex、GPT image 2 等模型能力的配置。',
+        summaryKey:'api.recommendFhlSummary',
         advantages:['OpenAI 兼容接入', '配置路径简单', '适合图像与代码相关模型']
     }
 ];
 
 function refreshIcons(){ if(window.lucide) lucide.createIcons(); }
 function tr(key){ return window.StudioI18n ? window.StudioI18n.t(key) : key; }
+function trf(key, vars={}){
+    let text = tr(key);
+    Object.entries(vars).forEach(([name, value]) => {
+        text = text.replaceAll(`{${name}}`, String(value ?? ''));
+    });
+    return text;
+}
 function setStatus(text){ statusEl.textContent = text || ''; }
 function rhEditorSideScrollEl(){
     return rhWorkflowEditorNodeList?.closest?.('.rh-workflow-editor-side') || rhWorkflowEditorNodeList;
@@ -343,15 +350,15 @@ function rhEditorSortedFields(fields){
     });
 }
 function rhFreeKeyHintText(item){
-    return item?.has_key ? `当前 RH币 Key 已保存：${item.key_env || 'API/.env'} ${item.key_preview || ''}` : '还没有保存 RH币 Key。';
+    return item?.has_key ? `${tr('api.rhCoinKeySaved')}${item.key_env || 'API/.env'} ${item.key_preview || ''}` : tr('api.rhNoCoinKey');
 }
 function rhWalletKeyHintText(item){
-    return item?.has_wallet_key ? `当前账户余额 Key 已保存：${item.wallet_key_env || 'API/.env'} ${item.wallet_key_preview || ''}` : '还没有保存账户余额 Key。验证地址和拉取模型会优先使用它。';
+    return item?.has_wallet_key ? `${tr('api.rhWalletKeySaved')}${item.wallet_key_env || 'API/.env'} ${item.wallet_key_preview || ''}` : tr('api.rhNoWalletKey');
 }
 function isNewUserProvider(item){
     if(!item) return false;
     if(item.id === 'modelscope') return !item.has_key;
-    if(item.id === 'runninghub') return !item.has_key;
+    if(item.id === 'runninghub') return !item.has_key && !item.has_wallet_key;
     return false;
 }
 function renderProviderOnboarding(item){
@@ -368,36 +375,36 @@ function renderProviderOnboarding(item){
         providerOnboardingCard.innerHTML = `
             <div class="onboarding-head">
                 <div>
-                    <div class="onboarding-title">${escapeHtml(guide.title)}</div>
-                    <div class="onboarding-desc">${escapeHtml(guide.desc)}</div>
+                    <div class="onboarding-title">${escapeHtml(tr(guide.titleKey))}</div>
+                    <div class="onboarding-desc">${escapeHtml(tr(guide.descKey))}</div>
                 </div>
-                <span class="onboarding-badge">NEW</span>
+                <span class="onboarding-badge">${escapeHtml(tr('api.onboardingNew'))}</span>
             </div>
             <div class="onboarding-step-panel onboarding-rh-linear-panel onboarding-ms-linear-panel">
                 <div class="onboarding-rh-panel-head">
                     <div>
-                        <div class="onboarding-step-title">获取 Token 后填写并保存</div>
+                        <div class="onboarding-step-title">${escapeHtml(tr('api.msOnboardingStep'))}</div>
                     </div>
                     <i data-lucide="key-round" class="onboarding-rh-icon w-4 h-4"></i>
                 </div>
                 <div class="onboarding-rh-linear-rows">
                     <div class="onboarding-rh-linear-row onboarding-ms-linear-row">
                         <div class="onboarding-rh-source-group">
-                            <div class="onboarding-rh-source-label">ModelScope Token</div>
+                            <div class="onboarding-rh-source-label">${escapeHtml(tr('api.msTokenLabel'))}</div>
                             <div class="onboarding-key-actions onboarding-rh-key-actions">
-                                <a class="onboarding-key-btn" href="${escapeAttr(guide.primaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="key-round" class="w-3.5 h-3.5"></i><span>${escapeHtml(guide.primaryLabel)}</span></a>
-                                <a class="onboarding-key-btn" href="${escapeAttr(guide.secondaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="globe-2" class="w-3.5 h-3.5"></i><span>${escapeHtml(guide.secondaryLabel)}</span></a>
+                                <a class="onboarding-key-btn" href="${escapeAttr(guide.primaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="key-round" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr(guide.primaryLabelKey))}</span></a>
+                                <a class="onboarding-key-btn" href="${escapeAttr(guide.secondaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="globe-2" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr(guide.secondaryLabelKey))}</span></a>
                             </div>
                         </div>
                         <div class="recommend-flow-arrow onboarding-flow-arrow onboarding-rh-row-arrow" aria-hidden="true"><span></span><b></b></div>
                         <label class="onboarding-key-field onboarding-rh-row-field">
                             <span>API Key</span>
-                            <input type="password" value="${escapeAttr(keyInput?.value || '')}" placeholder="粘贴 ModelScope Token" oninput="syncOnboardingKeyInput('standard', this.value)">
+                            <input type="password" value="${escapeAttr(keyInput?.value || '')}" placeholder="${escapeAttr(tr('api.msTokenPlaceholder'))}" oninput="syncOnboardingKeyInput('standard', this.value)">
                         </label>
                     </div>
                 </div>
                 <div class="onboarding-rh-save-line">
-                    <button class="onboarding-save-btn onboarding-rh-save-all" type="button" onclick="saveKeyOnly()"><i data-lucide="check" class="w-3.5 h-3.5"></i><span>保存</span></button>
+                    <button class="onboarding-save-btn onboarding-rh-save-all" type="button" onclick="saveKeyOnly()"><i data-lucide="check" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr('api.save'))}</span></button>
                 </div>
             </div>
         `;
@@ -408,50 +415,50 @@ function renderProviderOnboarding(item){
         providerOnboardingCard.innerHTML = `
             <div class="onboarding-head">
                 <div>
-                    <div class="onboarding-title">${escapeHtml(guide.title)}</div>
-                    <div class="onboarding-desc">${escapeHtml(guide.desc)}</div>
+                    <div class="onboarding-title">${escapeHtml(tr(guide.titleKey))}</div>
+                    <div class="onboarding-desc">${escapeHtml(tr(guide.descKey))}</div>
                 </div>
-                <span class="onboarding-badge">NEW</span>
+                <span class="onboarding-badge">${escapeHtml(tr('api.onboardingNew'))}</span>
             </div>
             <div class="onboarding-step-panel onboarding-rh-linear-panel">
                 <div class="onboarding-rh-panel-head">
                     <div>
-                        <div class="onboarding-step-title">获取 Key 后填写并保存</div>
+                        <div class="onboarding-step-title">${escapeHtml(tr('api.rhOnboardingStep'))}</div>
                     </div>
                     <i data-lucide="key-round" class="onboarding-rh-icon w-4 h-4"></i>
                 </div>
                 <div class="onboarding-rh-linear-rows">
                     <div class="onboarding-rh-linear-row">
                         <div class="onboarding-rh-source-group">
-                            <div class="onboarding-rh-source-label">RH币 Key</div>
+                            <div class="onboarding-rh-source-label">${escapeHtml(tr('api.rhCoinKey'))}</div>
                             <div class="onboarding-key-actions onboarding-rh-key-actions">
-                                <a class="onboarding-key-btn" href="${escapeAttr(guide.primaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="coins" class="w-3.5 h-3.5"></i><span>${escapeHtml(guide.primaryLabel)}</span></a>
-                                <a class="onboarding-key-btn" href="${escapeAttr(guide.secondaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="globe-2" class="w-3.5 h-3.5"></i><span>${escapeHtml(guide.secondaryLabel)}</span></a>
+                                <a class="onboarding-key-btn" href="${escapeAttr(guide.primaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="coins" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr(guide.primaryLabelKey))}</span></a>
+                                <a class="onboarding-key-btn" href="${escapeAttr(guide.secondaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="globe-2" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr(guide.secondaryLabelKey))}</span></a>
                             </div>
                         </div>
                         <div class="recommend-flow-arrow onboarding-flow-arrow onboarding-rh-row-arrow" aria-hidden="true"><span></span><b></b></div>
                         <label class="onboarding-key-field onboarding-rh-row-field">
-                            <span>RH币 API Key · 必填</span>
-                            <input type="password" value="${escapeAttr(rhFreeKeyInput?.value || '')}" placeholder="粘贴 RH币 API Key" oninput="syncOnboardingKeyInput('free', this.value)">
+                            <span>${escapeHtml(tr('api.rhCoinApiKeyRequired'))}</span>
+                            <input type="password" value="${escapeAttr(rhFreeKeyInput?.value || '')}" placeholder="${escapeAttr(tr('api.rhCoinPlaceholder'))}" oninput="syncOnboardingKeyInput('free', this.value)">
                         </label>
                     </div>
                     <div class="onboarding-rh-linear-row">
                         <div class="onboarding-rh-source-group">
-                            <div class="onboarding-rh-source-label">账户余额 Key</div>
+                            <div class="onboarding-rh-source-label">${escapeHtml(tr('api.rhWalletKey'))}</div>
                             <div class="onboarding-key-actions onboarding-rh-key-actions">
-                                <a class="onboarding-key-btn" href="${escapeAttr(guide.walletPrimaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="wallet" class="w-3.5 h-3.5"></i><span>${escapeHtml(guide.walletPrimaryLabel)}</span></a>
-                                <a class="onboarding-key-btn" href="${escapeAttr(guide.walletSecondaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="globe-2" class="w-3.5 h-3.5"></i><span>${escapeHtml(guide.walletSecondaryLabel)}</span></a>
+                                <a class="onboarding-key-btn" href="${escapeAttr(guide.walletPrimaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="wallet" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr(guide.walletPrimaryLabelKey))}</span></a>
+                                <a class="onboarding-key-btn" href="${escapeAttr(guide.walletSecondaryUrl)}" target="_blank" rel="noopener noreferrer"><i data-lucide="globe-2" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr(guide.walletSecondaryLabelKey))}</span></a>
                             </div>
                         </div>
                         <div class="recommend-flow-arrow onboarding-flow-arrow onboarding-rh-row-arrow" aria-hidden="true"><span></span><b></b></div>
                         <label class="onboarding-key-field onboarding-rh-row-field">
-                            <span>账户余额 API Key · 可选</span>
-                            <input type="password" value="${escapeAttr(rhWalletKeyInput?.value || '')}" placeholder="需要账户余额时再粘贴" oninput="syncOnboardingKeyInput('wallet', this.value)">
+                            <span>${escapeHtml(tr('api.rhWalletApiKeyOptional'))}</span>
+                            <input type="password" value="${escapeAttr(rhWalletKeyInput?.value || '')}" placeholder="${escapeAttr(tr('api.rhWalletPlaceholder'))}" oninput="syncOnboardingKeyInput('wallet', this.value)">
                         </label>
                     </div>
                 </div>
                 <div class="onboarding-rh-save-line">
-                    <button class="onboarding-save-btn onboarding-rh-save-all" type="button" onclick="saveOnboardingRunningHubKey()"><i data-lucide="check" class="w-3.5 h-3.5"></i><span>保存</span></button>
+                    <button class="onboarding-save-btn onboarding-rh-save-all" type="button" onclick="saveOnboardingRunningHubKey()"><i data-lucide="check" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr('api.save'))}</span></button>
                 </div>
             </div>
         `;
@@ -465,7 +472,7 @@ function syncOnboardingKeyInput(kind, value){
 }
 async function saveOnboardingRunningHubKey(){
     const freeKey = rhFreeKeyInput?.value.trim() || '';
-    if(!freeKey){ alert('请输入 RH币 API Key'); return; }
+    if(!freeKey){ alert(tr('api.rhEnterCoinAlert')); return; }
     const item = provider();
     if(!item || item.id !== 'runninghub') return;
     syncEditor();
@@ -1799,6 +1806,10 @@ function closeRecommendApi(){
 function syncRecommendView(){
     if(settingsContent) settingsContent.hidden = recommendInlineOpen;
     if(recommendContent) recommendContent.hidden = !recommendInlineOpen;
+    const recommendTitle = recommendContent?.querySelector('.editor-title');
+    const recommendSub = recommendContent?.querySelector('.editor-sub');
+    if(recommendTitle) recommendTitle.textContent = tr('api.recommendPanelTitle');
+    if(recommendSub) recommendSub.textContent = tr('api.recommendPanelSub');
     document.body.classList.toggle('show-recommend-mode', recommendInlineOpen);
 }
 function renderRecommendApi(){
@@ -1816,27 +1827,27 @@ function renderRecommendApi(){
                     </div>
                     <span class="recommend-badge">${escapeHtml(api.protocol === 'apimart' ? 'APIMart' : 'OpenAI')}</span>
                 </div>
-                <p class="recommend-platform-summary">${escapeHtml(api.summary)}</p>
+                <p class="recommend-platform-summary">${escapeHtml(tr(api.summaryKey))}</p>
                 <div class="recommend-tags">
-                    ${api.tags.map(tag => `<span class="recommend-tag">${escapeHtml(tag)}</span>`).join('')}
+                    ${(api.tagKeys || []).map(tag => `<span class="recommend-tag">${escapeHtml(tag.startsWith('api.') ? tr(tag) : tag)}</span>`).join('')}
                 </div>
             </div>
             <div class="recommend-platform-setup">
-                <div class="recommend-setup-title">快捷设置</div>
+                <div class="recommend-setup-title">${escapeHtml(tr('api.recommendQuickSetup'))}</div>
                 <div class="recommend-quick-stack recommend-setup-flow">
                     <div class="recommend-guide-source onboarding-rh-source-group">
-                        <div class="onboarding-rh-source-label">获取 Key</div>
+                        <div class="onboarding-rh-source-label">${escapeHtml(tr('api.getKey'))}</div>
                         <div class="onboarding-key-actions onboarding-rh-key-actions recommend-single-action">
-                            <a class="onboarding-key-btn recommend-guide-key-btn" href="${escapeAttr(api.register_url)}" target="_blank" rel="noopener noreferrer"><i data-lucide="key-round" class="w-3.5 h-3.5"></i><span>获取 Key</span></a>
+                            <a class="onboarding-key-btn recommend-guide-key-btn" href="${escapeAttr(api.register_url)}" target="_blank" rel="noopener noreferrer"><i data-lucide="key-round" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr('api.getKey'))}</span></a>
                         </div>
                     </div>
                     <div class="recommend-flow-arrow onboarding-flow-arrow recommend-guide-arrow" aria-hidden="true"><span></span><b></b></div>
                     <div class="recommend-guide-save">
                         <label class="onboarding-key-field onboarding-rh-row-field">
                             <span>API Key</span>
-                            <input type="password" data-recommend-key="${index}" placeholder="粘贴 ${escapeAttr(api.name)} API Key">
+                            <input type="password" data-recommend-key="${index}" placeholder="${escapeAttr(trf('api.recommendKeyPlaceholder', {name:api.name}))}">
                         </label>
-                        <button class="onboarding-save-btn recommend-guide-save-btn" type="button" onclick="saveRecommendedApi(${index})"><span>保存</span></button>
+                        <button class="onboarding-save-btn recommend-guide-save-btn" type="button" onclick="saveRecommendedApi(${index})"><span>${escapeHtml(tr('api.save'))}</span></button>
                     </div>
                 </div>
             </div>
@@ -1845,18 +1856,18 @@ function renderRecommendApi(){
     recommendPanel.innerHTML = `
         <div class="onboarding-head">
             <div>
-                <div class="onboarding-title">推荐平台</div>
-                <div class="onboarding-desc">选择适合的平台，获取 Key 后在右侧保存为默认配置。</div>
+                <div class="onboarding-title">${escapeHtml(tr('api.recommendPanelTitle'))}</div>
+                <div class="onboarding-desc">${escapeHtml(tr('api.recommendPanelDesc'))}</div>
             </div>
         </div>
         <div class="recommend-api-body recommend-inline-body">${html}</div>
-        <div class="recommend-note">提示：账户内需要至少 0.05 元余额，才能验证地址并拉取模型。</div>
+        <div class="recommend-note">${escapeHtml(tr('api.recommendApiNote'))}</div>
         <div class="recommend-account-invite">
             <div>
-                <div class="recommend-account-title">GPT / Codex / Claude 账号订阅</div>
-                <div class="recommend-account-desc">独立订阅、成品账号等选择，适合想直冲自己账户的人。</div>
+                <div class="recommend-account-title">${escapeHtml(tr('api.recommendAccountTitle'))}</div>
+                <div class="recommend-account-desc">${escapeHtml(tr('api.recommendAccountDesc'))}</div>
             </div>
-            <a class="onboarding-key-btn recommend-account-link" href="https://bewild.ai?code=WULIDX" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>查看方案</span></a>
+            <a class="onboarding-key-btn recommend-account-link" href="https://bewild.ai?code=WULIDX" target="_blank" rel="noopener noreferrer"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>${escapeHtml(tr('api.viewPlans'))}</span></a>
         </div>
     `;
     refreshIcons();
@@ -1891,7 +1902,7 @@ async function saveRecommendedApi(index){
     if(!api) return;
     const input = recommendPanel?.querySelector(`[data-recommend-key="${index}"]`);
     const key = input?.value.trim() || '';
-    if(!key){ alert('请输入 API Key'); return; }
+    if(!key){ alert(tr('api.enterApiKey')); return; }
     const item = recommendedProviderForApi(api);
     selectedId = item.id;
     recommendInlineOpen = false;
@@ -1905,7 +1916,7 @@ async function saveRecommendedApi(index){
     }
     syncEditor();
     const ok = await saveProviders();
-    if(ok) setStatus(`已保存 ${api.name}，当前显示该平台配置。`);
+    if(ok) setStatus(trf('api.recommendSaved', {name:api.name}));
 }
 function sortedProviders(){
     const order = ['modelscope', 'runninghub'];
@@ -2031,11 +2042,11 @@ function renderEditor(){
         ensureRunningHubLists(item);
         if(rhFreeKeyInput){
             rhFreeKeyInput.value = '';
-            rhFreeKeyInput.placeholder = item.has_key ? `保持当前 RH币 Key ${item.key_preview || ''}` : '输入 RH币 API Key';
+            rhFreeKeyInput.placeholder = item.has_key ? `${tr('api.rhKeepCoinKey')} ${item.key_preview || ''}` : tr('api.rhEnterCoinKey');
         }
         if(rhWalletKeyInput){
             rhWalletKeyInput.value = '';
-            rhWalletKeyInput.placeholder = item.has_wallet_key ? `保持当前账户余额 Key ${item.wallet_key_preview || ''}` : '输入账户余额 API Key';
+            rhWalletKeyInput.placeholder = item.has_wallet_key ? `${tr('api.rhKeepWalletKey')} ${item.wallet_key_preview || ''}` : tr('api.rhEnterWalletKey');
         }
         if(rhFreeKeyHint) rhFreeKeyHint.textContent = rhFreeKeyHintText(item);
         if(rhWalletKeyHint) rhWalletKeyHint.textContent = rhWalletKeyHintText(item);
@@ -2609,6 +2620,7 @@ recommendApiOverlay?.addEventListener('mousedown', event => {
     if(event.target === recommendApiOverlay) closeRecommendApi();
 });
 window.addEventListener('studio-lang-change', () => {
+    syncRecommendView();
     if(recommendInlineOpen) renderRecommendApi();
     else renderEditor();
 });

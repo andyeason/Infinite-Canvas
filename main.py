@@ -510,6 +510,37 @@ def provider_key_env(provider_id):
 def runninghub_wallet_key_env():
     return "RUNNINGHUB_WALLET_API_KEY"
 
+def read_api_env_value(key: str) -> str:
+    key = str(key or "").strip()
+    if not key or not os.path.exists(API_ENV_FILE):
+        return ""
+    try:
+        with open(API_ENV_FILE, "r", encoding="utf-8-sig") as f:
+            for raw_line in f.read().splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                env_key, value = line.split("=", 1)
+                if env_key.strip() == key:
+                    return value.strip().strip('"').strip("'")
+    except Exception:
+        return ""
+    return ""
+
+def provider_env_key_value(provider_id: str) -> str:
+    provider_id = str(provider_id or "").strip().lower()
+    env_key = provider_key_env(provider_id)
+    key = os.getenv(env_key, "") or read_api_env_value(env_key)
+    if key:
+        return key
+    if provider_id == "modelscope":
+        return MODELSCOPE_API_KEY or ""
+    return ""
+
+def runninghub_wallet_key_value() -> str:
+    env_key = runninghub_wallet_key_env()
+    return os.getenv(env_key, "") or read_api_env_value(env_key)
+
 def mask_secret(value):
     if not value:
         return ""
@@ -902,7 +933,7 @@ def public_provider(provider):
             provider = runninghub_provider_with_workflow_store(provider)
         except Exception:
             pass
-    key = os.getenv(provider_key_env(provider["id"]), "")
+    key = provider_env_key_value(provider["id"])
     item = {
         **provider,
         "has_key": bool(key),
@@ -910,7 +941,7 @@ def public_provider(provider):
         "key_env": provider_key_env(provider["id"]),
     }
     if provider.get("id") == "runninghub":
-        wallet_key = os.getenv(runninghub_wallet_key_env(), "")
+        wallet_key = runninghub_wallet_key_value()
         item.update({
             "has_wallet_key": bool(wallet_key),
             "wallet_key_preview": mask_secret(wallet_key),
@@ -951,6 +982,26 @@ def get_api_provider_exact(provider_id: str):
     if not provider.get("enabled", True):
         raise HTTPException(status_code=400, detail=f"API 平台已禁用：{provider.get('name') or target}")
     return provider
+
+def modelscope_provider_config():
+    return get_api_provider_exact("modelscope")
+
+def modelscope_api_key(explicit_key: str = ""):
+    return (
+        strip_auth_scheme(explicit_key, "Bearer")
+        or strip_auth_scheme(provider_env_key_value("modelscope"), "Bearer")
+        or strip_auth_scheme(MODELSCOPE_API_KEY, "Bearer")
+    )
+
+def modelscope_api_root(provider=None):
+    provider = provider or modelscope_provider_config()
+    base_root = str((provider or {}).get("base_url") or MODELSCOPE_CHAT_BASE_URL).strip().rstrip("/")
+    if not base_root:
+        base_root = MODELSCOPE_CHAT_BASE_URL
+    return base_root if base_root.endswith("/v1") else f"{base_root}/v1"
+
+def modelscope_image_api_root():
+    return MODELSCOPE_CHAT_BASE_URL.rstrip("/")
 
 def env_quote(value):
     text = str(value or "")
@@ -1056,6 +1107,60 @@ def static_html_response(filename: str):
         media_type="text/html; charset=utf-8",
         headers={"Cache-Control": "no-cache"},
     )
+
+PROMPT_TEMPLATE_MD = os.path.join(BASE_DIR, "功能点", "无限画布_预设提示词标准库_v2.0.md")
+
+def prompt_template_category(name: str, scene: str) -> str:
+    text = f"{name} {scene}"
+    if any(k in text for k in ["光影", "灯光", "光效", "电影级"]):
+        return "lighting"
+    if any(k in text for k in ["角色", "脸部", "表情", "Actor", "服装"]):
+        return "character"
+    if any(k in name for k in ["产品", "电商", "工业"]):
+        return "product"
+    return "storyboard"
+
+def extract_prompt_template_section(block: str, title: str) -> str:
+    pattern = rf"###\s*{re.escape(title)}\s*\n(?P<body>.*?)(?=\n###\s+|\Z)"
+    match = re.search(pattern, block, re.S)
+    if not match:
+        return ""
+    body = match.group("body").strip()
+    fence = re.search(r"```(?:\w+)?\s*\n(?P<code>.*?)\n```", body, re.S)
+    return (fence.group("code") if fence else body).strip()
+
+def parse_prompt_template_markdown(text: str):
+    templates = []
+    matches = list(re.finditer(r"^##\s*预设\s*(\d+)\s*[：:]\s*(.+?)\s*$", text, re.M))
+    for index, match in enumerate(matches):
+        number = match.group(1).strip()
+        name = match.group(2).strip()
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        block = text[start:end]
+        scene = extract_prompt_template_section(block, "适用场景")
+        positive = extract_prompt_template_section(block, "正向提示词")
+        negative = extract_prompt_template_section(block, "负向提示词")
+        params_raw = extract_prompt_template_section(block, "平台参数建议")
+        params = {}
+        for line in params_raw.splitlines():
+            item = re.match(r"[-*]\s*\*\*(.+?)\*\*\s*[：:]\s*(.+)", line.strip())
+            if item:
+                params[item.group(1).strip()] = item.group(2).strip()
+        if not positive:
+            continue
+        templates.append({
+            "id": f"builtin_md_{number}",
+            "number": number,
+            "name": name,
+            "category": prompt_template_category(name, scene),
+            "scene": scene,
+            "positive": positive,
+            "negative": negative,
+            "params": params,
+            "builtin": True,
+        })
+    return templates
 
 @app.get("/api/app-info")
 def app_info():
@@ -1630,6 +1735,7 @@ class CanvasAssetCheckRequest(BaseModel):
 
 class CanvasAssetDownloadRequest(BaseModel):
     urls: List[str] = []
+    items: List[Dict[str, Any]] = []
     filename: str = "canvas-output-images.zip"
 
 class SmartCanvasGroupExportItem(BaseModel):
@@ -2074,10 +2180,11 @@ def display_title(text):
 
 def resolve_chat_provider(provider: str, model: str, ms_model: str):
     if provider == "modelscope":
-        if not MODELSCOPE_API_KEY:
-            raise HTTPException(status_code=400, detail="未配置 MODELSCOPE_API_KEY，请在 API/.env 中填写。")
-        base = MODELSCOPE_CHAT_BASE_URL
-        hdrs = {"Authorization": bearer_auth_value(MODELSCOPE_API_KEY), "Content-Type": "application/json"}
+        clean_token = modelscope_api_key()
+        if not clean_token:
+            raise HTTPException(status_code=400, detail="未配置 ModelScope API Key，请在 API 设置中填写。")
+        base = modelscope_api_root()
+        hdrs = {"Authorization": bearer_auth_value(clean_token), "Content-Type": "application/json"}
         mdl = selected_model(ms_model or model, MODELSCOPE_CHAT_MODELS[0] if MODELSCOPE_CHAT_MODELS else "MiniMax/MiniMax-M2.7")
         return base, hdrs, mdl
     api_provider = get_api_provider(provider or "")
@@ -2338,6 +2445,48 @@ def output_file_from_url(url):
     if os.path.commonpath([output_root, path]) != output_root or not os.path.exists(path):
         return None
     return path
+
+def local_media_file_by_basename(name: str):
+    safe = os.path.basename(urllib.parse.unquote(str(name or "")))
+    if not safe:
+        return None
+    roots = [
+        OUTPUT_OUTPUT_DIR,
+        OUTPUT_INPUT_DIR,
+        os.path.join(ASSETS_DIR, "output"),
+        os.path.join(ASSETS_DIR, "input"),
+        os.path.join(ASSETS_DIR, "library"),
+    ]
+    for root in roots:
+        path = os.path.abspath(os.path.join(root, safe))
+        root_abs = os.path.abspath(root)
+        if os.path.commonpath([root_abs, path]) == root_abs and os.path.isfile(path):
+            return path
+    return None
+
+def filename_from_media_url(url: str, fallback: str = "download.bin") -> str:
+    path = urllib.parse.urlsplit(str(url or "")).path
+    name = os.path.basename(urllib.parse.unquote(path))
+    return sanitize_export_filename(name or fallback, fallback)
+
+def fetch_remote_media_bytes(url: str, timeout: float = 30.0, max_bytes: int = 200 * 1024 * 1024):
+    text = str(url or "").strip()
+    parsed = urllib.parse.urlparse(text)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return None
+    with requests.get(text, stream=True, timeout=timeout, headers={"User-Agent": "ComfyUI-API-Modelscope/1.0"}) as response:
+        response.raise_for_status()
+        content_type = response.headers.get("content-type") or "application/octet-stream"
+        chunks = []
+        total = 0
+        for chunk in response.iter_content(chunk_size=1024 * 256):
+            if not chunk:
+                continue
+            total += len(chunk)
+            if total > max_bytes:
+                raise HTTPException(status_code=413, detail="文件太大，无法下载")
+            chunks.append(chunk)
+        return b"".join(chunks), content_type
 
 def origin_from_url(value):
     parsed = urllib.parse.urlparse(str(value or ""))
@@ -2729,8 +2878,6 @@ def modelscope_image_url(value, max_size=1536):
         return value
     if isinstance(value, str) and (value.startswith("/output/") or value.startswith("/assets/")):
         return reference_to_data_url({"url": value}, max_size=max_size)
-    if isinstance(value, str) and value.startswith("data:image/"):
-        return compress_data_url_image(value, max_size=max_size)
     return value
 
 def valid_video_image_input(value: str) -> bool:
@@ -3368,7 +3515,7 @@ def friendly_chat_error_detail(text, model="", provider=None):
     return ""
 
 async def generate_modelscope_provider_image(prompt, size, model, reference_images=None, provider=None):
-    clean_token = MODELSCOPE_API_KEY.strip()
+    clean_token = modelscope_api_key()
     if not clean_token:
         raise HTTPException(status_code=400, detail="未配置 ModelScope API Key，请在 API 设置中填写。")
     width, height = parse_size_pair(size)
@@ -3376,7 +3523,7 @@ async def generate_modelscope_provider_image(prompt, size, model, reference_imag
     for ref in (reference_images or [])[:4]:
         if not ref.get("url"):
             continue
-        # 把参考图压缩为 data URL，避免 base64 payload 过大导致 MS 内部任务失败
+        # 本地参考图转为 data URL；前端已生成的 data URL 保持原样，贴近旧版稳定链路。
         refs.append(modelscope_image_url(ref.get("url", ""), max_size=1536))
     headers = {
         "Authorization": f"Bearer {clean_token}",
@@ -3394,8 +3541,7 @@ async def generate_modelscope_provider_image(prompt, size, model, reference_imag
     if refs:
         payload["image_url"] = refs
 
-    base_root = ((provider or {}).get("base_url") or MODELSCOPE_CHAT_BASE_URL).rstrip("/")
-    api_root = base_root if base_root.endswith("/v1") else f"{base_root}/v1"
+    api_root = modelscope_image_api_root()
     async with httpx.AsyncClient(timeout=AI_REQUEST_TIMEOUT) as client:
         submit_res = await client.post(f"{api_root}/images/generations", headers=headers, json=payload)
         submit_res.raise_for_status()
@@ -4019,12 +4165,27 @@ def view_image(filename: str, type: str = "input", subfolder: str = ""):
     raise HTTPException(status_code=404, detail="Image not found on any available backend")
 
 @app.get("/api/download-output")
-def download_output(url: str, name: str = ""):
+def download_output(url: str, name: str = "", inline: bool = False):
     path = output_file_from_url(url)
     if not path:
+        path = local_media_file_by_basename(filename_from_media_url(url, ""))
+    if path:
+        filename = sanitize_export_filename(os.path.basename(name) if name else os.path.basename(path), os.path.basename(path))
+        return FileResponse(path, media_type=content_type_for_path(path), filename=None if inline else filename)
+    try:
+        remote = fetch_remote_media_bytes(url)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"远程文件下载失败：{exc}")
+    if not remote:
         raise HTTPException(status_code=404, detail="文件不存在")
-    filename = os.path.basename(name) if name else os.path.basename(path)
-    return FileResponse(path, media_type=content_type_for_path(path), filename=filename)
+    content, content_type = remote
+    fallback = filename_from_media_url(url, "download.bin")
+    filename = sanitize_export_filename(os.path.basename(name) if name else fallback, fallback)
+    disposition = "inline" if inline else "attachment"
+    headers = {"Content-Disposition": f"{disposition}; filename*=UTF-8''{urllib.parse.quote(filename)}"}
+    return Response(content, media_type=content_type, headers=headers)
 
 @app.post("/api/upload")
 async def upload_image(files: List[UploadFile] = File(...)):
@@ -4439,7 +4600,7 @@ async def ai_config():
         "api_providers": providers,
         "has_api_key": bool(AI_API_KEY),
         "ms_chat_models": MODELSCOPE_CHAT_MODELS,
-        "has_ms_key": bool(MODELSCOPE_API_KEY),
+        "has_ms_key": bool(modelscope_api_key()),
     }
 
 @app.get("/api/models")
@@ -4502,8 +4663,9 @@ async def save_providers(payload: List[ApiProviderPayload]):
 @app.get("/api/config/token")
 async def get_global_token():
     # 优先读 env，回退到 global_config.json（兼容旧数据）
-    if MODELSCOPE_API_KEY:
-        return {"token": MODELSCOPE_API_KEY}
+    saved_token = modelscope_api_key()
+    if saved_token:
+        return {"token": saved_token}
     if os.path.exists(GLOBAL_CONFIG_FILE):
         try:
             with open(GLOBAL_CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -4874,6 +5036,30 @@ def video_api_root(provider):
         base_url = base_url.rsplit("/", 1)[0]
     return base_url
 
+def looks_like_html_response(text: str) -> bool:
+    sample = str(text or "").lstrip()[:200].lower()
+    return sample.startswith("<!doctype html") or sample.startswith("<html") or "<head" in sample
+
+def video_submit_url_candidates(provider, base_url):
+    if is_apimart_provider(provider):
+        return [f"{base_url}/videos/generations" if base_url.endswith("/v1") else f"{base_url}/v1/videos/generations"]
+    if is_volcengine_provider(provider):
+        return [f"{base_url}/api/v3/contents/generations/tasks"]
+    return [f"{base_url}/v1/videos/generations", f"{base_url}/v2/videos/generations"]
+
+def video_task_url_candidates(provider, base_url, task_id, submit_url=""):
+    if is_apimart_provider(provider):
+        task_path = f"{base_url}/tasks/{task_id}" if base_url.endswith("/v1") else f"{base_url}/v1/tasks/{task_id}"
+        return [f"{task_path}?language=zh"]
+    if is_volcengine_provider(provider):
+        return [f"{base_url}/api/v3/contents/generations/tasks/{task_id}"]
+    v1_task = f"{base_url}/v1/videos/generations/{task_id}"
+    v1_generic_task = f"{base_url}/v1/tasks/{task_id}"
+    v2_task = f"{base_url}/v2/videos/generations/{task_id}"
+    if "/v2/videos/generations" in str(submit_url or ""):
+        return [v2_task, v1_task, v1_generic_task]
+    return [v1_task, v1_generic_task, v2_task]
+
 VIDEO_TASK_SUCCESS_STATUSES = {
     "SUCCESS", "SUCCEED", "SUCCEEDED", "COMPLETED", "COMPLETE",
     "DONE", "FINISHED", "FINISH", "OK", "READY",
@@ -4883,25 +5069,31 @@ VIDEO_TASK_FAILURE_STATUSES = {
     "CANCELED", "CANCELLED", "TIMEOUT", "TIMEDOUT", "REJECTED", "EXPIRED",
 }
 
-async def wait_for_video_task(client, provider, task_id):
+async def wait_for_video_task(client, provider, task_id, submit_url=""):
     base_url = video_api_root(provider)
     if not base_url:
         raise HTTPException(status_code=400, detail=f"{provider.get('name') or provider['id']} 未配置 Base URL")
-    if is_apimart_provider(provider):
-        task_path = f"{base_url}/tasks/{task_id}" if base_url.endswith("/v1") else f"{base_url}/v1/tasks/{task_id}"
-        task_url = f"{task_path}?language=zh"
-    elif is_volcengine_provider(provider):
-        task_url = f"{base_url}/api/v3/contents/generations/tasks/{task_id}"
-    else:
-        task_url = f"{base_url}/v2/videos/generations/{task_id}"
+    task_urls = video_task_url_candidates(provider, base_url, task_id, submit_url)
     deadline = time.monotonic() + VIDEO_POLL_TIMEOUT
     delay = max(2.0, IMAGE_POLL_INTERVAL)
     last_payload = {}
     while time.monotonic() < deadline:
         await asyncio.sleep(delay)
-        response = await client.get(task_url, headers=api_headers(provider=provider))
-        response.raise_for_status()
-        raw = response.json()
+        raw = None
+        last_error = None
+        for task_url in task_urls:
+            try:
+                response = await client.get(task_url, headers=api_headers(provider=provider))
+                response.raise_for_status()
+                raw = response.json()
+                break
+            except Exception as exc:
+                last_error = exc
+                continue
+        if raw is None:
+            if last_error:
+                raise last_error
+            raise HTTPException(status_code=502, detail=f"视频任务查询失败：{task_id}")
         last_payload = raw
         task_data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
         status = str(task_data.get("status") or task_data.get("task_status") or raw.get("status") or raw.get("task_status") or "").upper()
@@ -4946,12 +5138,8 @@ async def canvas_video(payload: CanvasVideoRequest):
         raise HTTPException(status_code=400, detail=f"未配置 {provider.get('name') or provider['id']} 的 API Key，请在 API 设置中填写。")
     is_apimart = is_apimart_provider(provider)
     is_volcengine = is_volcengine_provider(provider)
-    submit_url = (
-        f"{base_url}/videos/generations" if is_apimart and base_url.endswith("/v1")
-        else f"{base_url}/v1/videos/generations" if is_apimart
-        else f"{base_url}/api/v3/contents/generations/tasks" if is_volcengine
-        else f"{base_url}/v2/videos/generations"
-    )
+    submit_urls = video_submit_url_candidates(provider, base_url)
+    submit_url = submit_urls[0]
     requested_model = selected_model(payload.model, "veo3-fast")
     is_veo31 = is_apimart and is_apimart_veo31_model(requested_model)
     try:
@@ -5139,18 +5327,42 @@ async def canvas_video(payload: CanvasVideoRequest):
                     if payload.generate_audio:
                         body["generate_audio"] = True
             # --- 发起视频生成请求 ---
-            response = await client.post(submit_url, headers=api_headers(provider=provider), json=body)
-            response.raise_for_status()
-            try:
-                raw = response.json()
-            except Exception:
-                # 上游返回了 HTML 错误页面或非 JSON 响应
-                resp_text = response.text[:500]
-                raise HTTPException(status_code=502, detail=f"上游视频接口返回非 JSON 响应（状态 {response.status_code}）：{resp_text}")
+            raw = None
+            html_response = None
+            last_response = None
+            last_json_error = None
+            for candidate_url in submit_urls:
+                submit_url = candidate_url
+                response = await client.post(submit_url, headers=api_headers(provider=provider), json=body)
+                last_response = response
+                response.raise_for_status()
+                try:
+                    raw = response.json()
+                    break
+                except Exception as exc:
+                    last_json_error = exc
+                    if looks_like_html_response(response.text):
+                        html_response = response
+                        continue
+                    resp_text = response.text[:500]
+                    raise HTTPException(status_code=502, detail=f"上游视频接口返回非 JSON 响应（状态 {response.status_code}）：{resp_text}")
+            if raw is None:
+                resp = html_response or last_response
+                status_code = getattr(resp, "status_code", 200)
+                resp_text = (getattr(resp, "text", "") or "")[:500]
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        f"上游视频接口返回了网页 HTML，而不是 JSON（状态 {status_code}）。\n\n"
+                        f"这通常表示 API 设置里的 Base URL 指到了第三方聚合平台的管理后台/网页入口，"
+                        f"或该平台不支持当前视频接口路径。请确认 Base URL 是接口地址，例如以 /v1 结尾的 OpenAI 兼容地址，"
+                        f"并确认该平台实际支持视频生成端点。\n\n原始响应：{resp_text}"
+                    )
+                ) from last_json_error
             task_id = extract_task_id(raw) or raw.get("task_id") or raw.get("id")
             result = raw
             if task_id and not video_output_urls(raw):
-                result = await wait_for_video_task(client, provider, task_id)
+                result = await wait_for_video_task(client, provider, task_id, submit_url)
             urls = video_output_urls(result)
             if not urls:
                 raise HTTPException(status_code=502, detail=f"视频生成成功但没有返回视频：{result}")
@@ -5343,6 +5555,18 @@ async def get_canvas_meta(canvas_id: str):
 async def get_canvas(canvas_id: str):
     return {"canvas": load_canvas(canvas_id)}
 
+@app.get("/api/smart-canvas/prompt-templates")
+async def smart_canvas_prompt_templates():
+    try:
+        if not os.path.exists(PROMPT_TEMPLATE_MD):
+            return {"templates": []}
+        with open(PROMPT_TEMPLATE_MD, "r", encoding="utf-8") as f:
+            text = f.read()
+        return {"templates": parse_prompt_template_markdown(text)}
+    except Exception as e:
+        print(f"读取提示词模板失败: {e}")
+        return {"templates": []}
+
 @app.post("/api/canvas-assets/check")
 async def check_canvas_assets(payload: CanvasAssetCheckRequest):
     result = {}
@@ -5361,15 +5585,36 @@ async def download_canvas_assets(payload: CanvasAssetDownloadRequest):
     buffer = BytesIO()
     used_names = set()
     count = 0
+    raw_items = payload.items or [{"url": url} for url in payload.urls]
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for url in payload.urls[:1000]:
-            text = str(url or "").strip()
-            if not text or not (text.startswith("/output/") or text.startswith("/assets/")):
+        for raw in raw_items[:1000]:
+            if isinstance(raw, dict):
+                text = str(raw.get("url") or "").strip()
+                requested_name = str(raw.get("name") or "").strip()
+            else:
+                text = str(raw or "").strip()
+                requested_name = ""
+            if not text:
                 continue
             path = output_file_from_url(text)
-            if not path or not os.path.isfile(path):
-                continue
-            base = os.path.basename(path) or f"image-{count + 1}.png"
+            content = None
+            content_type = ""
+            if path and os.path.isfile(path):
+                base = sanitize_export_filename(requested_name or os.path.basename(path), os.path.basename(path) or f"image-{count + 1}.png")
+            else:
+                local_by_name = local_media_file_by_basename(filename_from_media_url(text, ""))
+                if local_by_name and os.path.isfile(local_by_name):
+                    path = local_by_name
+                    base = sanitize_export_filename(requested_name or os.path.basename(path), os.path.basename(path) or f"image-{count + 1}.png")
+                else:
+                    try:
+                        remote = fetch_remote_media_bytes(text)
+                    except Exception:
+                        remote = None
+                    if not remote:
+                        continue
+                    content, content_type = remote
+                    base = sanitize_export_filename(requested_name or filename_from_media_url(text, f"image-{count + 1}.bin"), f"image-{count + 1}.bin")
             name, ext = os.path.splitext(base)
             archive_name = base
             suffix = 2
@@ -5377,7 +5622,10 @@ async def download_canvas_assets(payload: CanvasAssetDownloadRequest):
                 archive_name = f"{name}-{suffix}{ext}"
                 suffix += 1
             used_names.add(archive_name)
-            zf.write(path, archive_name)
+            if path and os.path.isfile(path):
+                zf.write(path, archive_name)
+            else:
+                zf.writestr(archive_name, content)
             count += 1
     if count <= 0:
         raise HTTPException(status_code=404, detail="没有可下载的本地图片")
@@ -5847,8 +6095,8 @@ async def delete_history(req: DeleteHistoryRequest):
 
 @app.post("/api/angle/poll_status")
 async def poll_angle_cloud(req: CloudPollRequest):
-    base_url = 'https://api-inference.modelscope.cn/'
-    clean_token = (req.api_key or MODELSCOPE_API_KEY).strip()
+    api_root = modelscope_image_api_root()
+    clean_token = modelscope_api_key(req.api_key)
     if not clean_token:
         raise HTTPException(status_code=400, detail="未提供 ModelScope API Key")
 
@@ -5864,64 +6112,62 @@ async def poll_angle_cloud(req: CloudPollRequest):
         async with httpx.AsyncClient(timeout=30) as client:
             for i in range(300):
                 await asyncio.sleep(2)
-                try:
-                    result = await client.get(
-                        f"{base_url}v1/tasks/{task_id}",
-                        headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
-                    )
-                    data = result.json()
-                    status = data.get("task_status")
+                result = await client.get(
+                    f"{api_root}/tasks/{task_id}",
+                    headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
+                )
+                result.raise_for_status()
+                data = result.json()
+                status = str(data.get("task_status") or "").upper()
 
-                    if status == "SUCCEED":
-                        img_url = data["output_images"][0]
-                        local_path = ""
-                        try:
-                            async with httpx.AsyncClient() as dl_client:
-                                img_res = await dl_client.get(img_url)
-                                if img_res.status_code == 200:
-                                    filename = f"cloud_angle_{int(time.time())}.png"
-                                    file_path = output_path_for(filename, "output")
-                                    with open(file_path, "wb") as f:
-                                        f.write(img_res.content)
-                                    local_path = output_url_for(filename, "output")
-                                else:
-                                    local_path = img_url
-                        except Exception:
-                            local_path = img_url
+                if status == "SUCCEED":
+                    img_url = data["output_images"][0]
+                    local_path = ""
+                    try:
+                        async with httpx.AsyncClient() as dl_client:
+                            img_res = await dl_client.get(img_url)
+                            if img_res.status_code == 200:
+                                filename = f"cloud_angle_{int(time.time())}.png"
+                                file_path = output_path_for(filename, "output")
+                                with open(file_path, "wb") as f:
+                                    f.write(img_res.content)
+                                local_path = output_url_for(filename, "output")
+                            else:
+                                local_path = img_url
+                    except Exception:
+                        local_path = img_url
 
-                        record = {"timestamp": time.time(), "prompt": f"Resumed {task_id}", "images": [local_path], "type": "angle"}
-                        save_to_history(record)
-                        if req.client_id:
-                            await manager.send_personal_message({"type": "cloud_status", "status": "SUCCEED", "task_id": task_id}, req.client_id)
-                        return {"url": local_path}
+                    record = {"timestamp": time.time(), "prompt": f"Resumed {task_id}", "images": [local_path], "type": "angle"}
+                    save_to_history(record)
+                    if req.client_id:
+                        await manager.send_personal_message({"type": "cloud_status", "status": "SUCCEED", "task_id": task_id}, req.client_id)
+                    return {"url": local_path}
 
-                    elif status == "FAILED":
-                        if req.client_id:
-                            await manager.send_personal_message({"type": "cloud_status", "status": "FAILED", "task_id": task_id}, req.client_id)
-                        raise Exception(f"ModelScope task failed: {data}")
+                elif status in {"FAILED", "FAIL", "ERROR", "CANCELED", "CANCELLED", "TIMEOUT", "REVOKED"}:
+                    if req.client_id:
+                        await manager.send_personal_message({"type": "cloud_status", "status": "FAILED", "task_id": task_id}, req.client_id)
+                    raise HTTPException(status_code=502, detail=f"ModelScope task failed: {data}")
 
-                    if i % 5 == 0 and req.client_id:
-                        await manager.send_personal_message({
-                            "type": "cloud_status", "status": f"{status} ({i}/300)",
-                            "task_id": task_id, "progress": i, "total": 300
-                        }, req.client_id)
-
-                except Exception as loop_e:
-                    print(f"Angle polling error: {loop_e}")
-                    continue
+                if i % 5 == 0 and req.client_id:
+                    await manager.send_personal_message({
+                        "type": "cloud_status", "status": f"{status} ({i}/300)",
+                        "task_id": task_id, "progress": i, "total": 300
+                    }, req.client_id)
 
             if req.client_id:
                 await manager.send_personal_message({"type": "cloud_status", "status": "TIMEOUT", "task_id": task_id}, req.client_id)
             return {"status": "timeout", "task_id": task_id, "message": "Task still pending"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Angle polling error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/angle/generate")
 async def generate_angle_cloud(req: CloudGenRequest):
-    base_url = 'https://api-inference.modelscope.cn/'
-    clean_token = (req.api_key or MODELSCOPE_API_KEY).strip()
+    api_root = modelscope_image_api_root()
+    clean_token = modelscope_api_key(req.api_key)
     if not clean_token:
         raise HTTPException(status_code=400, detail="未提供 ModelScope API Key")
 
@@ -5943,7 +6189,7 @@ async def generate_angle_cloud(req: CloudGenRequest):
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            submit_res = await client.post(f"{base_url}v1/images/generations", headers=headers, json=payload)
+            submit_res = await client.post(f"{api_root}/images/generations", headers=headers, json=payload)
             if submit_res.status_code != 200:
                 try:
                     detail = submit_res.json()
@@ -5956,53 +6202,49 @@ async def generate_angle_cloud(req: CloudGenRequest):
 
             for i in range(300):
                 await asyncio.sleep(2)
-                try:
-                    result = await client.get(
-                        f"{base_url}v1/tasks/{task_id}",
-                        headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
-                    )
-                    data = result.json()
-                    status = data.get("task_status")
+                result = await client.get(
+                    f"{api_root}/tasks/{task_id}",
+                    headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
+                )
+                result.raise_for_status()
+                data = result.json()
+                status = str(data.get("task_status") or "").upper()
 
-                    if status == "SUCCEED":
-                        img_url = data["output_images"][0]
-                        local_path = ""
-                        try:
-                            async with httpx.AsyncClient() as dl_client:
-                                img_res = await dl_client.get(img_url)
-                                if img_res.status_code == 200:
-                                    filename = f"cloud_angle_{int(time.time())}.png"
-                                    file_path = output_path_for(filename, "output")
-                                    with open(file_path, "wb") as f:
-                                        f.write(img_res.content)
-                                    local_path = output_url_for(filename, "output")
-                                else:
-                                    local_path = img_url
-                        except Exception:
-                            local_path = img_url
+                if status == "SUCCEED":
+                    img_url = data["output_images"][0]
+                    local_path = ""
+                    try:
+                        async with httpx.AsyncClient() as dl_client:
+                            img_res = await dl_client.get(img_url)
+                            if img_res.status_code == 200:
+                                filename = f"cloud_angle_{int(time.time())}.png"
+                                file_path = output_path_for(filename, "output")
+                                with open(file_path, "wb") as f:
+                                    f.write(img_res.content)
+                                local_path = output_url_for(filename, "output")
+                            else:
+                                local_path = img_url
+                    except Exception:
+                        local_path = img_url
 
-                        record = {"timestamp": time.time(), "prompt": req.prompt, "images": [local_path], "type": "angle"}
-                        save_to_history(record)
-                        if req.client_id:
-                            await manager.send_personal_message({"type": "cloud_status", "status": "SUCCEED", "task_id": task_id}, req.client_id)
-                        if GLOBAL_LOOP:
-                            asyncio.run_coroutine_threadsafe(manager.broadcast_new_image(record), GLOBAL_LOOP)
-                        return {"url": local_path, "task_id": task_id}
+                    record = {"timestamp": time.time(), "prompt": req.prompt, "images": [local_path], "type": "angle"}
+                    save_to_history(record)
+                    if req.client_id:
+                        await manager.send_personal_message({"type": "cloud_status", "status": "SUCCEED", "task_id": task_id}, req.client_id)
+                    if GLOBAL_LOOP:
+                        asyncio.run_coroutine_threadsafe(manager.broadcast_new_image(record), GLOBAL_LOOP)
+                    return {"url": local_path, "task_id": task_id}
 
-                    elif status == "FAILED":
-                        if req.client_id:
-                            await manager.send_personal_message({"type": "cloud_status", "status": "FAILED", "task_id": task_id}, req.client_id)
-                        raise Exception(f"ModelScope task failed: {data}")
+                elif status in {"FAILED", "FAIL", "ERROR", "CANCELED", "CANCELLED", "TIMEOUT", "REVOKED"}:
+                    if req.client_id:
+                        await manager.send_personal_message({"type": "cloud_status", "status": "FAILED", "task_id": task_id}, req.client_id)
+                    raise HTTPException(status_code=502, detail=f"ModelScope task failed: {data}")
 
-                    if i % 5 == 0 and req.client_id:
-                        await manager.send_personal_message({
-                            "type": "cloud_status", "status": f"{status} ({i}/300)",
-                            "task_id": task_id, "progress": i, "total": 300
-                        }, req.client_id)
-
-                except Exception as loop_e:
-                    print(f"Angle polling error: {loop_e}")
-                    continue
+                if i % 5 == 0 and req.client_id:
+                    await manager.send_personal_message({
+                        "type": "cloud_status", "status": f"{status} ({i}/300)",
+                        "task_id": task_id, "progress": i, "total": 300
+                    }, req.client_id)
 
             if req.client_id:
                 await manager.send_personal_message({"type": "cloud_status", "status": "TIMEOUT", "task_id": task_id}, req.client_id)
@@ -6018,8 +6260,8 @@ async def generate_angle_cloud(req: CloudGenRequest):
 
 @app.post("/generate")
 async def generate_cloud(req: CloudGenRequest):
-    base_url = 'https://api-inference.modelscope.cn/'
-    clean_token = (req.api_key or MODELSCOPE_API_KEY).strip()
+    api_root = modelscope_image_api_root()
+    clean_token = modelscope_api_key(req.api_key)
     if not clean_token:
         raise HTTPException(status_code=400, detail="未提供 ModelScope API Key")
 
@@ -6039,7 +6281,7 @@ async def generate_cloud(req: CloudGenRequest):
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             submit_res = await client.post(
-                f"{base_url}v1/images/generations",
+                f"{api_root}/images/generations",
                 headers={**headers, "X-ModelScope-Async-Mode": "true"},
                 json=payload
             )
@@ -6055,49 +6297,45 @@ async def generate_cloud(req: CloudGenRequest):
 
             for i in range(200):
                 await asyncio.sleep(3)
-                try:
-                    result = await client.get(
-                        f"{base_url}v1/tasks/{task_id}",
-                        headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
-                    )
-                    data = result.json()
-                    status = data.get("task_status")
+                result = await client.get(
+                    f"{api_root}/tasks/{task_id}",
+                    headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
+                )
+                result.raise_for_status()
+                data = result.json()
+                status = str(data.get("task_status") or "").upper()
 
-                    if i % 5 == 0:
-                        print(f"Task {task_id} status check {i}: {status}")
+                if i % 5 == 0:
+                    print(f"Task {task_id} status check {i}: {status}")
 
-                    if status == "SUCCEED":
-                        img_url = data["output_images"][0]
-                        local_path = ""
-                        try:
-                            async with httpx.AsyncClient() as dl_client:
-                                img_res = await dl_client.get(img_url)
-                                if img_res.status_code == 200:
-                                    filename = f"cloud_{int(time.time())}.png"
-                                    file_path = output_path_for(filename, "output")
-                                    with open(file_path, "wb") as f:
-                                        f.write(img_res.content)
-                                    local_path = output_url_for(filename, "output")
-                                else:
-                                    local_path = img_url
-                        except Exception as dl_e:
-                            print(f"Download error: {dl_e}")
-                            local_path = img_url
+                if status == "SUCCEED":
+                    img_url = data["output_images"][0]
+                    local_path = ""
+                    try:
+                        async with httpx.AsyncClient() as dl_client:
+                            img_res = await dl_client.get(img_url)
+                            if img_res.status_code == 200:
+                                filename = f"cloud_{int(time.time())}.png"
+                                file_path = output_path_for(filename, "output")
+                                with open(file_path, "wb") as f:
+                                    f.write(img_res.content)
+                                local_path = output_url_for(filename, "output")
+                            else:
+                                local_path = img_url
+                    except Exception as dl_e:
+                        print(f"Download error: {dl_e}")
+                        local_path = img_url
 
-                        record = {"timestamp": time.time(), "prompt": req.prompt, "images": [local_path], "type": "cloud"}
-                        save_to_history(record)
-                        try:
-                            await manager.broadcast_new_image(record)
-                        except Exception:
-                            pass
-                        return {"url": local_path}
+                    record = {"timestamp": time.time(), "prompt": req.prompt, "images": [local_path], "type": "cloud"}
+                    save_to_history(record)
+                    try:
+                        await manager.broadcast_new_image(record)
+                    except Exception:
+                        pass
+                    return {"url": local_path}
 
-                    elif status == "FAILED":
-                        raise Exception(f"ModelScope task failed: {data}")
-
-                except Exception as loop_e:
-                    print(f"Polling error (retrying): {loop_e}")
-                    continue
+                elif status in {"FAILED", "FAIL", "ERROR", "CANCELED", "CANCELLED", "TIMEOUT", "REVOKED"}:
+                    raise HTTPException(status_code=502, detail=f"ModelScope task failed: {data}")
 
             raise Exception("Cloud generation timeout")
 
@@ -6111,8 +6349,8 @@ async def generate_cloud(req: CloudGenRequest):
 
 @app.post("/api/ms/generate")
 async def ms_generate(req: MsGenerateRequest):
-    base_url = 'https://api-inference.modelscope.cn/'
-    clean_token = (req.api_key or MODELSCOPE_API_KEY).strip()
+    api_root = modelscope_image_api_root()
+    clean_token = modelscope_api_key(req.api_key)
     if not clean_token:
         raise HTTPException(status_code=400, detail="未配置 ModelScope API Key，请在 API 设置中填写，或重新保存 ModelScope Token。")
 
@@ -6139,7 +6377,7 @@ async def ms_generate(req: MsGenerateRequest):
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             submit_res = await client.post(
-                f"{base_url}v1/images/generations",
+                f"{api_root}/images/generations",
                 headers=headers,
                 json=payload
             )
@@ -6159,7 +6397,7 @@ async def ms_generate(req: MsGenerateRequest):
                 await asyncio.sleep(2)
                 try:
                     result = await client.get(
-                        f"{base_url}v1/tasks/{task_id}",
+                        f"{api_root}/tasks/{task_id}",
                         headers={**headers, "X-ModelScope-Task-Type": "image_generation"},
                     )
                     data = result.json()

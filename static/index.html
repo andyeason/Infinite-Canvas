@@ -23,11 +23,11 @@
             } catch(e) {}
         })();
     </script>
-    <script src="/static/vendor/js/tailwindcss-cdn.js?v=2026.05.28"></script>
-    <script src="/static/js/theme.js?v=2026.05.28"></script>
-    <script src="/static/js/i18n.js?v=2026.05.28"></script>
+    <script src="/static/vendor/js/tailwindcss-cdn.js?v=2026.05.28.1"></script>
+    <script src="/static/js/theme.js?v=2026.05.28.1"></script>
+    <script src="/static/js/i18n.js?v=2026.05.28.1"></script>
     <style>
-        @import url('/static/vendor/css/fonts.css?v=2026.05.28');
+        @import url('/static/vendor/css/fonts.css?v=2026.05.28.1');
 
         /* 本地 Tailwind 工具类兜底：CDN 慢/未就绪时也能立刻给图标尺寸，避免首屏左侧栏空白 */
         .w-1\.5 { width: 0.375rem; }
@@ -174,17 +174,48 @@
             height: 36px;
             border: 2px solid var(--text);
             border-radius: 12px;
+            background: transparent;
+            padding: 0;
+            color: var(--text);
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
             /* 仅保留 hover 真正会用到的属性过渡，避免 transition: all 因首屏属性补齐被意外触发 */
-            transition: transform 0.6s var(--fluid-ease) 0.5s, border-radius 0.6s var(--fluid-ease) 0.5s, border-color 0.3s;
+            transition: transform 0.6s var(--fluid-ease) 0.5s, border-radius 0.6s var(--fluid-ease) 0.5s, border-color 0.3s, background-color .18s, box-shadow .2s;
         }
 
         .sidebar:hover .logo-ring {
             transform: rotate(90deg);
             border-radius: 50%;
             transition-delay: 0s;
+        }
+
+        .logo-ring:hover,
+        .logo-ring:focus-visible {
+            background: var(--nav-hover-bg);
+            border-color: var(--text);
+            box-shadow: 0 0 0 4px rgba(148, 163, 184, .16), 0 10px 24px rgba(15, 23, 42, .08);
+            outline: none;
+        }
+
+        .logo-ring:hover #logo-dot,
+        .logo-ring:focus-visible #logo-dot {
+            transform: scale(1.8);
+        }
+
+        .logo-ring:active {
+            transform: scale(.94);
+            transition-delay: 0s;
+        }
+
+        .sidebar:hover .logo-ring:active {
+            transform: rotate(90deg) scale(.94);
+        }
+
+        #logo-dot {
+            transition: transform .16s ease, background-color .16s ease, box-shadow .16s ease;
         }
 
         /* 导航项 */
@@ -661,16 +692,152 @@
             border-color:#86efac;
             color:#052e16;
         }
+
+        .sidebar.is-pinned {
+            width: 220px;
+            transition-delay: 0s;
+        }
+        .sidebar.is-pinned .logo-ring {
+            transform: rotate(90deg);
+            border-radius: 50%;
+            transition-delay: 0s;
+            background: var(--nav-hover-bg);
+            color: var(--text);
+            box-shadow: 0 0 0 4px rgba(148, 163, 184, .10);
+        }
+        .sidebar.is-pinned #logo-dot {
+            background: var(--text) !important;
+            transform: scale(1.35);
+            box-shadow: 0 0 0 4px rgba(148, 163, 184, .16);
+        }
+        .sidebar.is-pinned .logo-ring:hover,
+        .sidebar.is-pinned .logo-ring:focus-visible {
+            box-shadow: 0 0 0 5px rgba(148, 163, 184, .14);
+        }
+        .sidebar.is-pinned .nav-item,
+        .sidebar.is-pinned .nav-fold-toggle {
+            width: 190px;
+            transition-delay: 0s;
+        }
+        .sidebar.is-pinned .nav-text {
+            opacity: 1;
+            transition-delay: 0.1s;
+        }
+        .sidebar.is-pinned .letter-d {
+            transform: translateX(-120px);
+            opacity: 0;
+            transition-delay: 0s;
+        }
+        .sidebar.is-pinned .letter-x {
+            transform: translateX(120px);
+            opacity: 0;
+            transition-delay: 0s;
+        }
+        .sidebar.is-pinned .author-content-wrap {
+            opacity: 1;
+            transform: scale(1);
+            transition-delay: 0.2s;
+            pointer-events: auto;
+        }
+        .sidebar.is-pinned .side-pill {
+            width: 170px;
+            gap: 8px;
+            transition-delay: 0s;
+        }
+        .sidebar.is-pinned .side-pill-text {
+            opacity: 1;
+            max-width: 120px;
+            transition-delay: .15s;
+        }
+        .sidebar.is-pinned .project-version-badge,
+        .sidebar.is-pinned .update-now-btn {
+            width: 170px;
+            transition-delay: 0s;
+        }
+        .sidebar.is-pinned .project-version-compact,
+        .sidebar.is-pinned .update-version-compact {
+            display: none;
+        }
+        .sidebar.is-pinned .project-version-full,
+        .sidebar.is-pinned .update-version-full,
+        .sidebar.is-pinned .update-action-prefix {
+            display: inline;
+        }
+        .sidebar.is-pinned .update-now-btn svg {
+            display: block;
+        }
+        .sidebar.is-pinned .update-now-text {
+            max-width: 130px;
+            transition-delay: .15s;
+        }
+
+        .sidebar.is-collapsing:hover {
+            width: 80px;
+        }
+        .sidebar.is-collapsing:hover .logo-ring {
+            transform: none;
+            border-radius: 12px;
+            background: transparent;
+        }
+        .sidebar.is-collapsing:hover .nav-item,
+        .sidebar.is-collapsing:hover .nav-fold-toggle {
+            width: 48px;
+        }
+        .sidebar.is-collapsing:hover .nav-text {
+            opacity: 0;
+        }
+        .sidebar.is-collapsing:hover .letter-d {
+            transform: translateX(-8px);
+            opacity: 1;
+        }
+        .sidebar.is-collapsing:hover .letter-x {
+            transform: translateX(8px);
+            opacity: 1;
+        }
+        .sidebar.is-collapsing:hover .author-content-wrap {
+            opacity: 0;
+            transform: scale(0.9);
+            pointer-events: none;
+        }
+        .sidebar.is-collapsing:hover .side-pill {
+            width: 44px;
+            gap: 0;
+        }
+        .sidebar.is-collapsing:hover .side-pill-text {
+            opacity: 0;
+            max-width: 0;
+        }
+        .sidebar.is-collapsing:hover .project-version-badge {
+            width: 44px;
+        }
+        .sidebar.is-collapsing:hover .project-version-compact,
+        .sidebar.is-collapsing:hover .update-version-compact {
+            display: inline;
+        }
+        .sidebar.is-collapsing:hover .project-version-full,
+        .sidebar.is-collapsing:hover .update-version-full,
+        .sidebar.is-collapsing:hover .update-action-prefix {
+            display: none;
+        }
+        .sidebar.is-collapsing:hover .update-now-btn {
+            width: 56px;
+        }
+        .sidebar.is-collapsing:hover .update-now-btn svg {
+            display: none;
+        }
+        .sidebar.is-collapsing:hover .update-now-text {
+            max-width: 42px;
+        }
     </style>
 </head>
 
 <body>
 
     <div class="app-shell">
-        <aside class="sidebar">
-            <div class="logo-ring mb-12">
+        <aside class="sidebar" id="studioSidebar">
+            <button class="logo-ring mb-12" id="sidebarLogoToggle" type="button" onclick="toggleSidebarPinned(event)" aria-pressed="false" title="固定导航栏">
                 <div class="w-1.5 h-1.5 rounded-full transition-colors" id="logo-dot" style="background:var(--text)"></div>
-            </div>
+            </button>
 
             <nav>
                 <button class="nav-fold-toggle" id="local-nav-toggle" type="button" onclick="toggleLocalNav()" aria-expanded="true" title="折叠本地功能">
@@ -845,15 +1012,15 @@
         </script>
 
         <main class="stage">
-            <iframe id="frame-zimage" data-src="/static/zimage.html?v=2026.05.28" class="active" scrolling="yes"></iframe>
-            <iframe id="frame-enhance" data-src="/static/enhance.html?v=2026.05.28" scrolling="yes"></iframe>
-            <iframe id="frame-klein" data-src="/static/klein.html?v=2026.05.28" scrolling="yes"></iframe>
-            <iframe id="frame-angle" data-src="/static/angle.html?v=2026.05.28" scrolling="yes"></iframe>
-            <iframe id="frame-online" data-src="/static/online.html?v=2026.05.28" scrolling="yes"></iframe>
-            <iframe id="frame-gpt-chat" data-src="/static/gpt-chat.html?v=2026.05.28" scrolling="yes"></iframe>
-            <iframe id="frame-canvas" data-src="/static/canvas.html?v=2026.05.28" scrolling="yes"></iframe>
-            <iframe id="frame-api-settings" data-src="/static/api-settings.html?v=2026.05.28" scrolling="yes"></iframe>
-            <iframe id="frame-comfyui-settings" data-src="/static/comfyui-settings.html?v=2026.05.28" scrolling="yes"></iframe>
+            <iframe id="frame-zimage" data-src="/static/zimage.html?v=2026.05.28.1" class="active" scrolling="yes"></iframe>
+            <iframe id="frame-enhance" data-src="/static/enhance.html?v=2026.05.28.1" scrolling="yes"></iframe>
+            <iframe id="frame-klein" data-src="/static/klein.html?v=2026.05.28.1" scrolling="yes"></iframe>
+            <iframe id="frame-angle" data-src="/static/angle.html?v=2026.05.28.1" scrolling="yes"></iframe>
+            <iframe id="frame-online" data-src="/static/online.html?v=2026.05.28.1" scrolling="yes"></iframe>
+            <iframe id="frame-gpt-chat" data-src="/static/gpt-chat.html?v=2026.05.28.1" scrolling="yes"></iframe>
+            <iframe id="frame-canvas" data-src="/static/canvas.html?v=2026.05.28.1" scrolling="yes"></iframe>
+            <iframe id="frame-api-settings" data-src="/static/api-settings.html?v=2026.05.28.1" scrolling="yes"></iframe>
+            <iframe id="frame-comfyui-settings" data-src="/static/comfyui-settings.html?v=2026.05.28.1" scrolling="yes"></iframe>
 
             <div class="nano-monitor" id="nano-monitor">
                 <div class="stat-group">
@@ -885,11 +1052,41 @@
         localStorage.setItem("client_id", CID);
         const ACTIVE_PAGE_KEY = 'studio_active_page';
         const LOCAL_NAV_COLLAPSED_KEY = 'studio_local_nav_collapsed';
+        const SIDEBAR_PINNED_KEY = 'studio_sidebar_pinned';
         const DEFAULT_PAGE_ID = 'zimage';
         const PAGE_IDS = ['zimage','enhance','klein','angle','online','gpt-chat','canvas','api-settings','comfyui-settings'];
         const LOCAL_PAGE_IDS = ['zimage','enhance','klein','angle'];
         const PROJECT_URL = 'https://github.com/hero8152/Infinite-Canvas';
         let appInfo = { version:'', repo_url:PROJECT_URL, version_url:'https://raw.githubusercontent.com/hero8152/Infinite-Canvas/main/VERSION' };
+
+        function setSidebarPinned(pinned, options = {}) {
+            const sidebar = document.getElementById('studioSidebar');
+            const logo = document.getElementById('sidebarLogoToggle');
+            if(!sidebar) return;
+            sidebar.classList.toggle('is-pinned', pinned);
+            if(!pinned) {
+                sidebar.classList.add('is-collapsing');
+                window.setTimeout(() => sidebar.classList.remove('is-collapsing'), 360);
+            } else {
+                sidebar.classList.remove('is-collapsing');
+            }
+            if(logo) {
+                logo.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+                logo.title = pinned ? '收起导航栏' : '固定导航栏';
+            }
+            if(!options.skipRemember) localStorage.setItem(SIDEBAR_PINNED_KEY, pinned ? '1' : '0');
+        }
+
+        function toggleSidebarPinned(event) {
+            event?.preventDefault?.();
+            event?.stopPropagation?.();
+            const sidebar = document.getElementById('studioSidebar');
+            setSidebarPinned(!sidebar?.classList.contains('is-pinned'));
+        }
+
+        function restoreSidebarPinned() {
+            setSidebarPinned(localStorage.getItem(SIDEBAR_PINNED_KEY) === '1', { skipRemember:true });
+        }
 
         function setLocalNavCollapsed(collapsed, options = {}) {
             const group = document.getElementById('local-nav-group');
@@ -936,6 +1133,7 @@
         }
 
         function restoreActivePage() {
+            restoreSidebarPinned();
             const id = PAGE_IDS.includes(localStorage.getItem(ACTIVE_PAGE_KEY)) ? localStorage.getItem(ACTIVE_PAGE_KEY) : DEFAULT_PAGE_ID;
             restoreLocalNav(id);
             const trigger = document.querySelector(`[onclick*="'${id}'"],[onclick*='"${id}"']`);
