@@ -13488,15 +13488,15 @@ shell.ondrop = async e => {
     await handleSmartImageDropPayload(payload, '', {point:p, forceNew:true});
 };
 window.addEventListener('paste', e => {
+    // 素材库管理页「复制到画布」过来的素材：Ctrl+V 批量粘贴成图片节点
+    if(!isEditableTarget(e.target) && pasteAssetsFromInbox()){
+        e.preventDefault();
+        return;
+    }
     const files = [...(e.clipboardData?.files || [])].filter(isSupportedUploadFile);
     if(files.length){
         lastImagePasteAt = Date.now();
         handleFiles(files, selectedId);
-        return;
-    }
-    // 素材库管理页「复制到画布」过来的素材：Ctrl+V 批量粘贴成图片节点
-    if(!isEditableTarget(e.target) && pasteAssetsFromInbox()){
-        e.preventDefault();
         return;
     }
     if(nodeClipboard?.nodes?.length && !isEditableTarget(e.target)){
@@ -13535,6 +13535,11 @@ window.addEventListener('keydown', e => {
         if(selectionText) return;
         e.preventDefault();
         copySelectedNodes();
+        return;
+    }
+    // 素材队列优先于系统剪贴板，避免微信截图等外部图片抢先粘贴。
+    if((e.ctrlKey || e.metaKey) && key === 'v' && !isEditableTarget(e.target) && pasteAssetsFromInbox()){
+        e.preventDefault();
         return;
     }
     if((e.ctrlKey || e.metaKey) && key === 'v' && !isEditableTarget(e.target) && nodeClipboard?.nodes?.length){

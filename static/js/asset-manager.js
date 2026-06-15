@@ -54,6 +54,7 @@ let workflowManageMode = false;
 let promptManageMode = false;
 let assetMoveTarget = '';
 let assetClipboard = null;
+let managedSelectionPointerGuard = null;
 let assetEditMode = false;
 let promptEditMode = false;
 let promptCreateMode = false;
@@ -857,6 +858,58 @@ function selectedCanvasAsset(){
     const items = currentCanvasAssetItems();
     return items.find(item => item.id === selectedCanvasAssetId) || items[0] || null;
 }
+// 批量管理选择统一走这里，保证复选框和卡片点击都能再次取消。
+function toggleSelectionSet(set, id){
+    if(!id) return false;
+    if(set.has(id)){
+        set.delete(id);
+        return false;
+    }
+    set.add(id);
+    return true;
+}
+function managedSelectionTarget(target){
+    if(activeTab === 'assets' && assetManageMode){
+        const check = target.closest?.('[data-asset-check]');
+        const card = target.closest?.('[data-asset-card]');
+        const id = check?.dataset.assetCheck || card?.dataset.assetCard || '';
+        if(id) return {kind:'asset', id};
+    }
+    if(activeTab === 'local' && localUploadManageMode){
+        const check = target.closest?.('[data-localup-check]');
+        const card = target.closest?.('[data-localup-card]');
+        const id = check?.dataset.localupCheck || card?.dataset.localupCard || '';
+        if(id) return {kind:'localup', id};
+    }
+    if(activeTab === 'local' && localManageMode){
+        const check = target.closest?.('[data-local-check]');
+        const card = target.closest?.('[data-local-card]');
+        const id = check?.dataset.localCheck || card?.dataset.localCard || '';
+        if(id) return {kind:'local', id};
+    }
+    return null;
+}
+function applyManagedSelection(kind, id){
+    if(kind === 'asset'){
+        const selected = toggleSelectionSet(selectedAssetIds, id);
+        selectedAssetId = selected ? id : (selectedAssetId === id ? '' : selectedAssetId);
+    } else if(kind === 'localup'){
+        const selected = toggleSelectionSet(selectedLocalUploadIds, id);
+        selectedLocalUploadId = selected ? id : (selectedLocalUploadId === id ? '' : selectedLocalUploadId);
+    } else if(kind === 'local'){
+        const selected = toggleSelectionSet(selectedLocalIds, id);
+        selectedLocalId = selected ? id : (selectedLocalId === id ? '' : selectedLocalId);
+    }
+    pendingBatchDelete = '';
+}
+function guardMatchesManagedSelection(target){
+    const current = managedSelectionTarget(target);
+    return !!current
+        && !!managedSelectionPointerGuard
+        && current.kind === managedSelectionPointerGuard.kind
+        && current.id === managedSelectionPointerGuard.id
+        && Date.now() - managedSelectionPointerGuard.at < 600;
+}
 function normalizeAssetState(){
     const libs = assetLibraries();
     if(!activeAssetLibraryId || !libs.some(lib => lib.id === activeAssetLibraryId)) activeAssetLibraryId = assetLibrary.active_library_id || libs[0]?.id || '';
@@ -1360,8 +1413,8 @@ function renderLocalUploadCard(item){
     const hasCaption = assetKind(item) === 'image' && String(item.caption || '').trim();
     return `<article class="asset-card ${item.id === selectedLocalUploadId ? 'active' : ''}" data-localup-card="${escapeAttr(item.id)}">
         <input class="asset-card-check" type="checkbox" data-localup-check="${escapeAttr(item.id)}" ${selectedLocalUploadIds.has(item.id) ? 'checked' : ''}>
-        <div class="asset-thumb">${assetThumb(item)}</div>
-        <div class="asset-card-body">
+        <div class="asset-thumb" data-localup-check="${escapeAttr(item.id)}">${assetThumb(item)}</div>
+        <div class="asset-card-body" data-localup-check="${escapeAttr(item.id)}">
             <div class="asset-card-name" data-localup-rename="${escapeAttr(item.id)}" title="${escapeAttr(item.name || '')}">${escapeHtml(item.name || '本地素材')}</div>
             <div class="asset-card-meta">${escapeHtml(assetKindLabel(item))} · ${escapeHtml(formatFileSize(item.size))}${hasCaption ? ' · 有提示词' : ''}</div>
         </div>
@@ -1781,8 +1834,8 @@ function renderAssetTreeInlineEdit(kind){
 function renderAssetCard(item){
     return `<article class="asset-card ${item.id === selectedAssetId ? 'active' : ''}" data-asset-card="${escapeAttr(item.id)}">
         <input class="asset-card-check" type="checkbox" data-asset-check="${escapeAttr(item.id)}" ${selectedAssetIds.has(item.id) ? 'checked' : ''}>
-        <div class="asset-thumb">${assetThumb(item)}</div>
-        <div class="asset-card-body">
+        <div class="asset-thumb" data-asset-check="${escapeAttr(item.id)}">${assetThumb(item)}</div>
+        <div class="asset-card-body" data-asset-check="${escapeAttr(item.id)}">
             <div class="asset-card-name" title="${escapeAttr(item.name || '')}">${escapeHtml(item.name || 'asset')}</div>
             <div class="asset-card-meta">${escapeHtml(assetKindLabel(item))} · ${escapeHtml(formatDate(item.created_at))}</div>
         </div>
@@ -2248,13 +2301,13 @@ function copySelectedAssetsToCanvas(){
         .map(canvasInboxAssetFromItem);
     if(!items.length){ setStatus('没有可复制的素材'); return; }
     try {
-        // 写入跨页剪贴板，画布页按 Ctrl+V 读取并批量粘贴
+        // 写入跨页 inbox，智能画布页按 Ctrl+V 读取并批量粘贴；不写系统剪贴板。
         localStorage.setItem(SMART_CANVAS_ASSET_INBOX_KEY, JSON.stringify({items, ts: Date.now()}));
     } catch(err){
         setStatus('复制失败：' + (err?.message || err));
         return;
     }
-    setStatus(`已复制 ${items.length} 个素材，去智能画布按 Ctrl+V 粘贴`);
+    setStatus(`已发送 ${items.length} 个素材到智能画布粘贴队列，切到智能画布后按 Ctrl+V`);
 }
 async function downloadSelectedAssets(){
     const items = [...selectedAssetIds].map(id => findAssetItem(id)).filter(it => it?.url);
@@ -2322,7 +2375,7 @@ function copySelectedLocalUploadsToCanvas(){
         setStatus('复制失败：' + (err?.message || err));
         return;
     }
-    setStatus(`已复制 ${items.length} 个素材，去智能画布按 Ctrl+V 粘贴`);
+    setStatus(`已发送 ${items.length} 个本地素材到智能画布粘贴队列，切到智能画布后按 Ctrl+V`);
 }
 function renderLocalUploadClipboardBar(){
     if(!localUploadClipboard?.ids?.length) return '';
@@ -2727,6 +2780,54 @@ async function saveLocalUploadCaption(id){
 }
 async function handleClick(event){
     const target = event.target;
+    // pointerdown 已处理过的选择点击，click 阶段只负责拦截，防止又切回原状态。
+    if(guardMatchesManagedSelection(target)){
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
+    if(activeTab === 'assets' && assetManageMode){
+        const assetCheck = target.closest?.('[data-asset-check]');
+        const assetCard = target.closest?.('[data-asset-card]');
+        if(assetCheck || assetCard){
+            event.preventDefault();
+            event.stopPropagation();
+            const id = assetCheck?.dataset.assetCheck || assetCard?.dataset.assetCard || '';
+            const selected = toggleSelectionSet(selectedAssetIds, id);
+            selectedAssetId = selected ? id : (selectedAssetId === id ? '' : selectedAssetId);
+            pendingBatchDelete = '';
+            render();
+            return;
+        }
+    }
+    if(activeTab === 'local' && localUploadManageMode){
+        const localUpCheck = target.closest?.('[data-localup-check]');
+        const localUpCard = target.closest?.('[data-localup-card]');
+        if(localUpCheck || localUpCard){
+            event.preventDefault();
+            event.stopPropagation();
+            const id = localUpCheck?.dataset.localupCheck || localUpCard?.dataset.localupCard || '';
+            const selected = toggleSelectionSet(selectedLocalUploadIds, id);
+            selectedLocalUploadId = selected ? id : (selectedLocalUploadId === id ? '' : selectedLocalUploadId);
+            pendingBatchDelete = '';
+            render();
+            return;
+        }
+    }
+    if(activeTab === 'local' && localManageMode){
+        const localCheck = target.closest?.('[data-local-check]');
+        const localCard = target.closest?.('[data-local-card]');
+        if(localCheck || localCard){
+            event.preventDefault();
+            event.stopPropagation();
+            const id = localCheck?.dataset.localCheck || localCard?.dataset.localCard || '';
+            const selected = toggleSelectionSet(selectedLocalIds, id);
+            selectedLocalId = selected ? id : (selectedLocalId === id ? '' : selectedLocalId);
+            pendingBatchDelete = '';
+            render();
+            return;
+        }
+    }
     const tabBtn = target.closest?.('[data-tab]');
     if(tabBtn){ activeTab = tabBtn.dataset.tab || 'assets'; selectedAssetIds.clear(); selectedWorkflowIds.clear(); selectedPromptIds.clear(); selectedLocalIds.clear(); selectedLocalUploadIds.clear(); selectedCanvasAssetIds.clear(); render(); return; }
     if(target.closest?.('#refreshBtn')){ await loadAll(); return; }
@@ -2804,8 +2905,12 @@ async function handleClick(event){
     if(localUpDeleteOne){ await deleteLocalAssets([localUpDeleteOne.dataset.localupDeleteOne || '']); return; }
     const localUpCheck = target.closest?.('[data-localup-check]');
     if(localUpCheck){
+        event.preventDefault();
+        event.stopPropagation();
         const id = localUpCheck.dataset.localupCheck || '';
-        if(selectedLocalUploadIds.has(id)) selectedLocalUploadIds.delete(id); else selectedLocalUploadIds.add(id);
+        const selected = toggleSelectionSet(selectedLocalUploadIds, id);
+        if(selected) selectedLocalUploadId = id;
+        else if(selectedLocalUploadId === id) selectedLocalUploadId = '';
         render();
         return;
     }
@@ -2815,11 +2920,12 @@ async function handleClick(event){
     if(localUpCopy){ const it = findLocalUpload(localUpCopy.dataset.localupCopy || ''); const ok = await copyTextToClipboard(it?.url || ''); setStatus(ok ? '已复制链接' : '复制失败'); return; }
     const localUpCard = target.closest?.('[data-localup-card]');
     if(localUpCard){
+        const id = localUpCard.dataset.localupCard || '';
         if(localUploadManageMode){
-            const id = localUpCard.dataset.localupCard || '';
-            if(selectedLocalUploadIds.has(id)) selectedLocalUploadIds.delete(id); else selectedLocalUploadIds.add(id);
+            const selected = toggleSelectionSet(selectedLocalUploadIds, id);
+            selectedLocalUploadId = selected ? id : (selectedLocalUploadId === id ? '' : selectedLocalUploadId);
         } else {
-            selectedLocalUploadId = localUpCard.dataset.localupCard || '';
+            selectedLocalUploadId = id;
         }
         render();
         return;
@@ -2891,13 +2997,26 @@ async function handleClick(event){
     if(localOpen){ openLocalItem(localOpen.dataset.localOpen || ''); return; }
     const localFolder = target.closest?.('[data-local-folder]');
     if(localFolder){ activeLocalFolderId = localFolder.dataset.localFolder || ''; selectedLocalId = ''; selectedLocalIds.clear(); pendingBatchDelete = ''; render(); return; }
-    if(target.closest?.('[data-local-check]')) return;
+    const localCheck = target.closest?.('[data-local-check]');
+    if(localCheck){
+        event.preventDefault();
+        event.stopPropagation();
+        if(localManageMode){
+            const id = localCheck.dataset.localCheck || '';
+            const selected = toggleSelectionSet(selectedLocalIds, id);
+            selectedLocalId = selected ? id : (selectedLocalId === id ? '' : selectedLocalId);
+            render();
+        }
+        return;
+    }
     const localCard = target.closest?.('[data-local-card]');
     if(localCard){
         const id = localCard.dataset.localCard || '';
-        selectedLocalId = id;
         if(localManageMode){
-            if(selectedLocalIds.has(id)) selectedLocalIds.delete(id); else selectedLocalIds.add(id);
+            const selected = toggleSelectionSet(selectedLocalIds, id);
+            selectedLocalId = selected ? id : (selectedLocalId === id ? '' : selectedLocalId);
+        } else {
+            selectedLocalId = id;
         }
         render();
         return;
@@ -2948,9 +3067,11 @@ async function handleClick(event){
     const workflowCard = target.closest?.('[data-workflow-card]');
     if(workflowCard){
         const id = workflowCard.dataset.workflowCard || '';
-        selectedWorkflowId = id;
         if(workflowManageMode){
-            if(selectedWorkflowIds.has(id)) selectedWorkflowIds.delete(id); else selectedWorkflowIds.add(id);
+            const selected = toggleSelectionSet(selectedWorkflowIds, id);
+            selectedWorkflowId = selected ? id : (selectedWorkflowId === id ? '' : selectedWorkflowId);
+        } else {
+            selectedWorkflowId = id;
         }
         pendingDeleteAssetId = '';
         render();
@@ -3076,8 +3197,34 @@ async function handleClick(event){
     }
     const assetCat = target.closest?.('[data-asset-cat]');
     if(assetCat){ activeAssetLibraryId = assetCat.dataset.assetCatLib || activeAssetLibraryId; activeAssetCategoryId = assetCat.dataset.assetCat || ''; activeAssetClassFilter = ''; assetTreeFocus = 'category'; selectedAssetId = ''; selectedAssetIds.clear(); render(); return; }
+    const assetCheck = target.closest?.('[data-asset-check]');
+    if(assetCheck){
+        event.preventDefault();
+        event.stopPropagation();
+        if(assetManageMode){
+            const id = assetCheck.dataset.assetCheck || '';
+            const selected = toggleSelectionSet(selectedAssetIds, id);
+            selectedAssetId = selected ? id : (selectedAssetId === id ? '' : selectedAssetId);
+            pendingBatchDelete = '';
+            render();
+        }
+        return;
+    }
     const assetCard = target.closest?.('[data-asset-card]');
-    if(assetCard){ selectedAssetId = assetCard.dataset.assetCard || ''; assetEditMode = false; pendingDeleteAssetId = ''; render(); return; }
+    if(assetCard){
+        const id = assetCard.dataset.assetCard || '';
+        if(assetManageMode){
+            const selected = toggleSelectionSet(selectedAssetIds, id);
+            selectedAssetId = selected ? id : (selectedAssetId === id ? '' : selectedAssetId);
+        } else {
+            selectedAssetId = id;
+        }
+        assetEditMode = false;
+        pendingDeleteAssetId = '';
+        pendingBatchDelete = '';
+        render();
+        return;
+    }
 
     const promptEditSave = target.closest?.('[data-prompt-edit-save]');
     if(promptEditSave){ await savePromptEdit(promptEditSave.dataset.promptEditSave || ''); return; }
@@ -3940,6 +4087,17 @@ async function deleteSelectedPrompts(){
     pendingBatchDelete = '';
     render();
 }
+// 先于原生 checkbox/change 处理选择，避免点复选框和点图片走出两套状态。
+root.addEventListener('pointerdown', event => {
+    if(event.button !== 0) return;
+    const target = managedSelectionTarget(event.target);
+    if(!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    applyManagedSelection(target.kind, target.id);
+    managedSelectionPointerGuard = {...target, at:Date.now()};
+    render();
+}, true);
 root.addEventListener('click', event => {
     handleClick(event).catch(err => setStatus(err.message || '操作失败'));
 });
@@ -4024,15 +4182,6 @@ root.addEventListener('change', event => {
             setStatus('已保存工作流名称');
         }).catch(err => setStatus(err.message || '保存失败'));
         return;
-    }
-    const assetCheck = event.target.closest?.('[data-asset-check]');
-    if(assetCheck){
-        if(!assetManageMode) return;
-        if(assetCheck.checked) {
-            selectedAssetIds.add(assetCheck.dataset.assetCheck);
-            selectedAssetId = assetCheck.dataset.assetCheck;
-        } else selectedAssetIds.delete(assetCheck.dataset.assetCheck);
-        render();
     }
     const workflowCheck = event.target.closest?.('[data-workflow-check]');
     if(workflowCheck){

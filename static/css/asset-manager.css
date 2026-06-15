@@ -195,6 +195,9 @@ body.theme-dark .asset-card.active { border-color:rgba(248,250,252,.86); box-sha
 .asset-card-check { position:absolute; left:8px; top:8px; z-index:2; width:16px; height:16px; accent-color:var(--strong); }
 .asset-thumb { width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; background:var(--soft); overflow:hidden; }
 .asset-thumb img,.asset-thumb video { width:100%; height:100%; object-fit:cover; display:block; }
+/* 管理模式下由卡片统一接管点击，避免图片元素吞掉勾选事件。 */
+.asset-content.manage-on .asset-thumb img,
+.asset-content.manage-on .asset-thumb video { pointer-events:none; }
 .canvas-asset-thumb { position:relative; }
 .asset-kind-badge { position:absolute; right:7px; top:7px; z-index:3; width:22px; height:22px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,.86); color:rgba(15,23,42,.78); border:1px solid rgba(15,23,42,.12); box-shadow:0 5px 14px rgba(15,23,42,.12); backdrop-filter:blur(8px); }
 .theme-dark .asset-kind-badge { background:rgba(17,18,22,.72); color:rgba(232,232,234,.82); border-color:rgba(255,255,255,.14); box-shadow:0 6px 16px rgba(0,0,0,.24); }
@@ -243,15 +246,16 @@ body.theme-dark .asset-card.active { border-color:rgba(248,250,252,.86); box-sha
 .asset-content.manage-on .manage-tools { display:flex; }
 .manage-group { min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .manage-select-group { flex:1 1 360px; }
-.manage-ai-group { flex:1 1 520px; justify-content:flex-end; }
+.manage-ai-group { flex:1 1 520px; min-width:0; justify-content:flex-end; }
 .manage-group-title { height:22px; padding:0 8px; border-radius:999px; background:var(--soft-2); color:var(--text); display:inline-flex; align-items:center; font-size:10px; line-height:1; font-weight:950; }
 .manage-summary { color:var(--muted); font-size:11px; font-weight:800; }
 .local-manage-tools { align-items:flex-start; }
 .local-manage-actions { justify-content:flex-end; }
-.local-caption-tools { flex:1 1 520px; min-width:min(100%, 520px); display:flex; flex-direction:column; gap:6px; align-items:stretch; }
-.local-caption-main-row { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:nowrap; min-width:0; }
-.local-caption-main-row .manage-select { flex:0 1 126px; min-width:86px; max-width:142px; }
-.local-caption-main-row .local-caption-prompt-input { flex:1 1 132px; min-width:96px; }
+/* 本地素材工具栏在窄宽度下换行，避免模型/按钮互相遮挡。 */
+.local-caption-tools { flex:1 1 520px; min-width:0; display:flex; flex-direction:column; gap:6px; align-items:stretch; }
+.local-caption-main-row { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; min-width:0; }
+.local-caption-main-row .manage-select { flex:1 1 126px; min-width:92px; max-width:168px; }
+.local-caption-main-row .local-caption-prompt-input { flex:1 1 132px; min-width:110px; }
 .local-caption-main-row .asset-btn { flex:0 0 auto; white-space:nowrap; }
 .local-caption-prompt-input { height:28px; min-width:0; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--text); outline:none; padding:0 8px; font-size:10.5px; font-weight:800; }
 .local-caption-prompt-input:focus { border-color:var(--line-2); box-shadow:0 0 0 3px rgba(148,163,184,.14); }
